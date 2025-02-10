@@ -2,11 +2,6 @@ library(tidyverse)
 library(palmerpenguins)
 library(shiny)
 
-
-git config --global user.name "Sofiaagutierrez"
-git config --global user.email "slgutierrez@uc.cl"
-
-
 #create user interface
 
 ui <- fluidPage(
