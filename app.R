@@ -1,16 +1,43 @@
 library(tidyverse)
 library(palmerpenguins)
 library(shiny)
+library(shinythemes)
 library(here)
 
-# Read in the Whale Alert CSV here 
+# Read in the Whale Alert CSV
+whale_raw <- read_csv("data/whale_data.csv")
 
-whale_raw <- read_csv(here("data", "whale_data.csv"))
-
+# Custom CSS to incorporate elements from the "lumen" theme
+custom_css <- "
+  /* Custom styles to mimic some Lumen-like elements */
+  .navbar {
+    background-color: #f7f7f7;  /* Light background like lumen theme */
+  }
+  .panel {
+    border-color: #d9edf7;  /* Lumen-style borders */
+  }
+  .btn-primary {
+    background-color: #428bca;  /* Primary button color from lumen */
+    border-color: #357ebd;  /* Button border */
+  }
+  .btn-primary:hover {
+    background-color: #3071a9;  /* Hover state */
+    border-color: #285e8e;
+  }
+  .content-wrapper {
+    background-color: #f5f5f5;  /* Light gray background for content */
+  }
+"
 
 # Create the user interface (this is the front end side of the Shiny App)
 ui <- fluidPage(
+  
+  # Apply the cerulean theme using shinythemes and add custom CSS
+  theme = shinytheme("cerulean"),
+  tags$head(tags$style(HTML(custom_css))),  # Add custom CSS
+  
   titlePanel("NOAA - Whale Alert"), 
+  
   tabsetPanel( # Add tabsetPanel for tabs
     tabPanel("Data Information",  # First tab now
              h3("Project Motivation"),
@@ -18,7 +45,7 @@ ui <- fluidPage(
              h3("Data Summary"), 
              p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
                As detailed by Anastaia, the relevant columns for this Shiny App include the X, Y position of the whale observation, 
-               the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time. ")
+               the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time.")
     ),
     tabPanel("Data Explorer",  # Second tab (was first)
              sidebarLayout(
@@ -67,6 +94,7 @@ ui <- fluidPage(
 
 # Create the server function 
 server <- function(input, output) {
+  
   penguin_select <- reactive({
     penguins_df <- penguins |> 
       filter(species == input$penguin_species)
