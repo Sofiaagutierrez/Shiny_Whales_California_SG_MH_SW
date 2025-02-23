@@ -47,7 +47,7 @@ ui <- fluidPage(
                As detailed by Anastaia, the relevant columns for this Shiny App include the X, Y position of the whale observation, 
                the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time.")
     ),
-    tabPanel("Data Explorer",  # Second tab (was first)
+    tabPanel("Whale Sightings Trends and Seasonality",  # Second tab (was first)
              sidebarLayout(
                sidebarPanel("Put my widgets here", 
                             radioButtons(
@@ -66,11 +66,11 @@ ui <- fluidPage(
                          tableOutput(outputId = "penguin_table"))  # Changed outputID to outputId
              )
     ), 
-    tabPanel("Advanced EDA",  # Moved tab before Resources
+    tabPanel("Whale Migration Forecast and Time Series Analysis",  # Moved tab before Resources
              h3("Advanced Exploratory Data Analysis"),
              p("This section will contain advanced exploratory data analysis features. Currently, it is under development.")
     ),
-    tabPanel("Resources",  # Resources tab now moved after Advanced EDA
+    tabPanel("Additional Resources",  # Resources tab now moved after Advanced EDA
              h4("For more information on reducing whale strikes, check out the following document:"),
              a("Reduce Whale Strikes - Top 5 Things You Should Know", 
                href = "https://media.fisheries.noaa.gov/dam-migration/reduce-whale-strikes-top5things.pdf", 
