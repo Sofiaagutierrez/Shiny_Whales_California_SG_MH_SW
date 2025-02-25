@@ -1,0 +1,52 @@
+---
+title: "Cleaned Whale Alert Data"
+author: "Team Whale Alert"
+format: html
+editor: visual
+---
+
+```{r}
+###################Sofia started this February 24th, 2pm ####################################
+
+#Loading libraries
+library(readr) #loading/reading data
+library(dplyr) # for %>%
+library(lubridate) #for changing the date column
+
+#Loading data
+whale_data <- read.csv("whale_alert.csv", header = TRUE, sep = ",")
+#View(whale_data)
+
+#cleaning off columns
+whale_cleaned <- whale_data %>% select(-c(project_id, trip_id, bearing, photos, photos_taken, whale_alert_submitter_name, whale_alert_submitter_email, whale_alert_submitter_phone, comments, animal_status, Id, X.1, X.2,X.3, X.4, X.5, X.6, X.7))
+#View(whale_cleaned)
+
+#Separating data column
+whale_cleaned <- whale_cleaned %>%
+  mutate(
+    create_date = ymd_hms(create_date), #converts to data-time format
+    year = year(create_date),
+    month = month(create_date, label = TRUE, abbr = TRUE)) %>% select(-c(create_date)) %>%     rename(species = whale_alert_species)
+#View(whale_cleaned)
+
+#cleaning of rows
+whale_cleaned <- whale_cleaned %>%
+  filter(!species %in% c("Unspecified", "Harbor Porpoise", "Dall's Porpoise", "Killer Whale",   "Killer Whale (Orca)", "Other", "Dolphin",
+  "Other (Specify in comments)", "Risso's Dolphin", "Long-beaked Common Dolphin",
+  "Southern Resident Killer Whale", "Sperm Whale", "Striped Dolphin", "Pacific White-sided Dolphin"))
+#View(whale_cleaned)
+
+#Filtering data for each species (if needed)
+humpback_whales <- whale_cleaned %>% filter(species == "Humpback Whale")
+blue_whales <- whale_cleaned %>% filter(species == "Blue Whale")
+minke_whales <- whale_cleaned %>% filter(species == "Minke Whale")
+gray_whales <- whale_cleaned %>% filter(species == "Gray Whale")
+fin_whales <- whale_cleaned %>% filter(species == "Fin Whale")
+
+#########Sofia Finshined editing February 24th, 3pm #####################################
+
+
+write.csv(whale_cleaned, file = "data/whale_cleaned.csv", row.names = FALSE)
+```
+
+
