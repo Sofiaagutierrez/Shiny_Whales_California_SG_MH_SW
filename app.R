@@ -5,7 +5,12 @@ library(shinythemes)
 library(here)
 
 # Read in the Whale Alert CSV
-whale_raw <- read_csv("data/whale_data.csv")
+whale_raw <- read_csv("data/whale_cleaned.csv")
+
+whale_relevant <- whale_raw |> 
+  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
+  group_by(species, year) |> 
+  summarize(Total_Value = sum(number_sighted), .groups = "drop")
 
 # Custom CSS to incorporate elements from the "lumen" theme
 custom_css <- "
@@ -51,9 +56,9 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel("Put my widgets here", 
                             radioButtons(
-                              inputId = "penguin_species", 
-                              label = "Choose penguin species", 
-                              choices = c("Adelie", "Gentoo", "Cool Chinstrap Penguins!" = "Chinstrap") 
+                              inputId = "whale_species", 
+                              label = "Choose whale species", 
+                              choices = c("Humpback Whale", "Fin Whale", "Blue Whale") 
                             ), 
                             selectInput(inputId = "pt_color",  # Changed from inputID to inputId
                                         label = "Select Point Color", 
@@ -61,7 +66,7 @@ ui <- fluidPage(
                                                     "Violets are purple" = "purple",
                                                     "Oranges are ..." = "orange"))), 
                mainPanel("Put my graph here", 
-                         plotOutput(outputId = "penguin_plot"), 
+                         plotOutput(outputId = "whale_plot"), 
                          h3("Summary Table"), 
                          tableOutput(outputId = "penguin_table"))  # Changed outputID to outputId
              )
@@ -93,19 +98,29 @@ ui <- fluidPage(
 )
 
 # Create the server function 
+# Create the server function 
 server <- function(input, output) {
   
-  penguin_select <- reactive({
-    penguins_df <- penguins |> 
-      filter(species == input$penguin_species)
+  # Reactive expression for the filtered whale data based on the selected species
+  whale_select <- reactive({
+    whale_relevant |> 
+      filter(species == input$whale_species)  # Filter data by the selected species
   })
   
-  output$penguin_plot <- renderPlot({
-    ggplot(data = penguin_select()) + 
-      geom_point(aes(x = flipper_length_mm, y = body_mass_g),
-                 color = input$pt_color) 
+  # Render the plot based on the filtered data
+  output$whale_plot <- renderPlot({
+    ggplot(whale_select(), aes(x = year, y = Total_Value, color = species)) + 
+      geom_line() +  # Line plot for time series
+      geom_point(color = input$pt_color) +  # Point color based on user input
+      theme_bw() +
+      labs(title = paste(input$whale_species, "Sightings Over Time"), 
+           x = "Year", 
+           y = "Number of Sightings") +
+      scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  # Show every year on the x-axis
   })
   
+  
+  # Example reactive table (if required)
   penguin_sum_table <- reactive({
     penguin_summary_df <- penguins |> 
       filter(species == input$penguin_species) |> 
