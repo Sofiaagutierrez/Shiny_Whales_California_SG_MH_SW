@@ -6,7 +6,7 @@ editor: visual
 ---
 
 ```{r}
-###################Sofia started this February 24th, 2pm ####################################
+###################Sofia started this February 24th, 2pm #################################### X
 
 #Loading libraries
 library(readr) #loading/reading data
