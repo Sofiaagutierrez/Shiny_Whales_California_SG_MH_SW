@@ -46,6 +46,9 @@ fin_whales <- whale_cleaned %>% filter(species == "Fin Whale")
 
 
 write.csv(whale_cleaned, file = "data/whale_cleaned.csv", row.names = FALSE)
+
+
+## Stella's edit
 ```
 
 
