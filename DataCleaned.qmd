@@ -28,18 +28,14 @@ whale_cleaned <- whale_cleaned %>%
     month = month(create_date, label = TRUE, abbr = TRUE)) %>% select(-c(create_date)) %>%     rename(species = whale_alert_species)
 #View(whale_cleaned)
 
-#cleaning of rows
+#cleaning of rows *Marley edited 2/25 - only filtered the endangered species we're looking at*
 whale_cleaned <- whale_cleaned %>%
-  filter(!species %in% c("Unspecified", "Harbor Porpoise", "Dall's Porpoise", "Killer Whale",   "Killer Whale (Orca)", "Other", "Dolphin",
-  "Other (Specify in comments)", "Risso's Dolphin", "Long-beaked Common Dolphin",
-  "Southern Resident Killer Whale", "Sperm Whale", "Striped Dolphin", "Pacific White-sided Dolphin"))
+  filter(species %in% c("Fin Whale", "Blue Whale", "Humpback Whale"))
 #View(whale_cleaned)
 
 #Filtering data for each species (if needed)
 humpback_whales <- whale_cleaned %>% filter(species == "Humpback Whale")
 blue_whales <- whale_cleaned %>% filter(species == "Blue Whale")
-minke_whales <- whale_cleaned %>% filter(species == "Minke Whale")
-gray_whales <- whale_cleaned %>% filter(species == "Gray Whale")
 fin_whales <- whale_cleaned %>% filter(species == "Fin Whale")
 
 #########Sofia Finshined editing February 24th, 3pm #####################################
@@ -49,12 +45,4 @@ write.csv(whale_cleaned, file = "data/whale_cleaned.csv", row.names = FALSE)
 
 
 ## Stella's edit
-```
-
-```{r}
-
-## Marley Test Pull
-
-
-
 ```
