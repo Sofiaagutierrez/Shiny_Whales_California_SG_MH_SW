@@ -17,7 +17,7 @@ whale_data <- read.csv("whale_alert.csv", header = TRUE, sep = ",")
 #View(whale_data)
 
 #cleaning off columns
-whale_cleaned <- whale_data %>% select(-c(project_id, trip_id, bearing, photos, photos_taken, whale_alert_submitter_name, whale_alert_submitter_email, whale_alert_submitter_phone, comments, animal_status, Id, X.1, X.2,X.3, X.4, X.5, X.6, X.7))
+whale_cleaned <- whale_data %>% select(-c(project_id, trip_id, bearing, photos, photos_taken, whale_alert_submitter_name, whale_alert_submitter_email, whale_alert_submitter_phone, comments, animal_status, Id, X.1, X.2,X.3, X.4, X.5, X.6, X.7, X, Y))
 #View(whale_cleaned)
 
 #Separating data column
@@ -31,7 +31,7 @@ whale_cleaned <- whale_cleaned %>%
 #cleaning of rows *Marley edited 2/25 - only filtered the endangered species we're looking at*
 whale_cleaned <- whale_cleaned %>%
   filter(species %in% c("Fin Whale", "Blue Whale", "Humpback Whale"))
-#View(whale_cleaned)
+View(whale_cleaned)
 
 #Filtering data for each species (if needed)
 humpback_whales <- whale_cleaned %>% filter(species == "Humpback Whale")
@@ -45,4 +45,27 @@ write.csv(whale_cleaned, file = "data/whale_cleaned.csv", row.names = FALSE)
 
 
 ## Stella's edit
+```
+
+View(whale_sf)
+
+```{r}
+#Sofia's edit on February 27th 
+
+# Convert whale data to sf
+
+
+whale_raw <- read_csv("data/whale_cleaned.csv")
+
+whale_sf <- whale_raw %>% 
+  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)  
+
+
+st_write(whale_sf, "data/whale_sf.shp", delete_dsn = TRUE)
+st_write(whale_sf, "data/whale_gpkg.gpkg", layer = "whale_sightings", delete_layer = TRUE)
+
+
+
+
 ```

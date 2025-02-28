@@ -1,0 +1,49 @@
+---
+title: "Maps"
+author: "Sofia"
+format: html
+---
+
+```{r}
+library(tmap)
+library(dplyr)
+library(sf)
+library(stars)
+worldelevation = read_stars("data/worldelevation.tif")
+worldvector = read_sf("data/worldvector.gpkg")
+worldcities = read_sf("data/worldcities.gpkg")
+```
+
+
+```{r}
+tm_shape(worldelevation) +
+  tm_raster("worldelevation.tif", palette = terrain.colors(8)) +
+tm_shape(worldvector) +
+  tm_borders() +
+tm_shape(worldcities, is.master = TRUE) +
+  tm_dots() +
+  tm_text("name")
+```
+
+
+```{r}
+#California Coast
+
+tmap_mode("view")
+
+tm_shape(worldelevation, bbox = c(-130, 25, -110, 50)) +  # Approximate California extent
+  tm_raster("worldelevation.tif", palette = terrain.colors(8)) +
+tm_shape(worldvector, bbox = c(-125, 32, -114, 42)) +
+  tm_borders() +
+tm_shape(worldcities, is.master = TRUE, bbox = c(-130, 25, -110, 50)) +
+  tm_dots() +
+  tm_text("name")
+
+
+
+
+
+
+
+```
+

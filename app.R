@@ -1,5 +1,8 @@
 library(tidyverse)
 library(palmerpenguins)
+library(sf)
+library(tmap)
+library(tmaptools)
 library(shiny)
 library(shinythemes)
 library(here)
@@ -11,6 +14,12 @@ whale_relevant <- whale_raw |>
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
   group_by(species, year) |> 
   summarize(Total_Value = sum(number_sighted), .groups = "drop")
+
+#for map,converting data into sf
+whale_sf <- whale_raw |> 
+  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
+
 
 # Custom CSS to incorporate elements from the "lumen" theme
 custom_css <- "
@@ -74,6 +83,20 @@ ui <- fluidPage(
                )
              )
     ), 
+    
+    tabPanel("Whale Sightings Map",
+             sidebarLayout(
+               sidebarPanel(
+                 p("This section will display a map of whale sightings."),
+                 selectInput("species_map", "Select Whale Species:", 
+                             choices = c("All Species", "Humpback Whale", "Fin Whale", "Blue Whale"))
+               ),
+               mainPanel(
+                 tmapOutput(outputId = "whale_map") 
+               )
+             )
+    ),
+  
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
              h3("Advanced Exploratory Data Analysis"),
              p("This section will contain advanced exploratory data analysis features. Currently, it is under development.")
@@ -97,6 +120,7 @@ ui <- fluidPage(
     )
   )
 )
+
 
 # Create the server function 
 server <- function(input, output) {
@@ -135,6 +159,24 @@ server <- function(input, output) {
     penguin_sum_table()
   })
 }
+
+  #Reactive expression to filter whale data for mapping
+  whale_map_data <- reactive({
+  if (input$map_species == "All Species") {
+    return(whale_sf)  # Return all species data
+  } else {
+    return(whale_sf |> filter(species == input$map_species))  # Filter by species
+  }
+})
+
+#Render tmap map
+output$whale_map <- renderTmap({
+  tmap_mode("view")  # Enable interactive mode
+  tm_shape(whale_map_data()) +
+    tm_dots(col = "species", palette = "Set1", size = 0.3) +
+    tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
+})
+
 
 # Combine them into an app
 shinyApp(ui = ui, server = server)
