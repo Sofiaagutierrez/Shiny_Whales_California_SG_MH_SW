@@ -20,7 +20,6 @@ whale_sf <- whale_raw |>
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
 
-
 # Custom CSS to incorporate elements from the "lumen" theme
 custom_css <- "
   /* Custom styles to mimic some Lumen-like elements */
@@ -84,18 +83,17 @@ ui <- fluidPage(
              )
     ), 
     
-    tabPanel("Whale Sightings Map",
+    # Tab for Zones Map
+    tabPanel("Interactive Map ", 
              sidebarLayout(
                sidebarPanel(
-                 p("This section will display a map of whale sightings."),
-                 selectInput("species_map", "Select Whale Species:", 
-                             choices = c("All Species", "Humpback Whale", "Fin Whale", "Blue Whale"))
+                 p("This section will display a map of different zones.")
                ),
                mainPanel(
-                 tmapOutput(outputId = "whale_map") 
+                 tmapOutput("whale_map")  # Display the map
                )
              )
-    ),
+    ), 
   
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
              h3("Advanced Exploratory Data Analysis"),
@@ -120,7 +118,6 @@ ui <- fluidPage(
     )
   )
 )
-
 
 # Create the server function 
 server <- function(input, output) {
@@ -157,26 +154,34 @@ server <- function(input, output) {
   
   output$penguin_table <- renderTable({
     penguin_sum_table()
-  })
-}
+  }) 
 
   #Reactive expression to filter whale data for mapping
   whale_map_data <- reactive({
   if (input$map_species == "All Species") {
     return(whale_sf)  # Return all species data
   } else {
-    return(whale_sf |> filter(species == input$map_species))  # Filter by species
+    #return(whale_sf |> filter(species == input$map_species))  # Filter by species
   }
-})
+  })
+  
+  #Reactive expression for reading zones shapefile
+  zones_sf <- reactive({
+    req(input$zones_shapefile)  # Ensure that file is uploaded
+    #Construct the file path to read the shapefile
+    zone_file <- input$zones_shapefile$datapath
+     #Read the shapefile using sf::st_read
+    st_read(zone_file)
+  })
 
-#Render tmap map
+#Render tmap 
 output$whale_map <- renderTmap({
   tmap_mode("view")  # Enable interactive mode
-  tm_shape(whale_map_data()) +
+  tm_shape(zones_sf()) +
     tm_dots(col = "species", palette = "Set1", size = 0.3) +
     tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
 })
-
+}
 
 # Combine them into an app
 shinyApp(ui = ui, server = server)

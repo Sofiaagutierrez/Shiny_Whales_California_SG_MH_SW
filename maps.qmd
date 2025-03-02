@@ -9,9 +9,9 @@ library(tmap)
 library(dplyr)
 library(sf)
 library(stars)
-worldelevation = read_stars("data/worldelevation.tif")
-worldvector = read_sf("data/worldvector.gpkg")
-worldcities = read_sf("data/worldcities.gpkg")
+#worldelevation = read_stars("data/worldelevation.tif")
+#worldvector = read_sf("data/worldvector.gpkg")
+#worldcities = read_sf("data/worldcities.gpkg")
 ```
 
 
@@ -39,11 +39,49 @@ tm_shape(worldcities, is.master = TRUE, bbox = c(-130, 25, -110, 50)) +
   tm_dots() +
   tm_text("name")
 
+```
 
 
+```{r}
+#zones map 
+
+zones_sf <- st_read("data/zones_shapefile.shp")
+
+tmap_mode("view")  # Enable interactive mode
+  tm_shape(zones_sf)+
+    tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
+  
+  print(tm_shape)
+```
 
 
+```{r}
+zones_sf <- st_read("data/zones_shapefile.shp")
+tm_shape(zones_sf)+
+  tm_polygons()+
+    tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
+```
 
+```{r}
+zones_sf <- st_read("data/zones_shapefile.shp")
+st_geometry_type(zones_sf)
+
+tm_shape(zones_sf) + 
+  tm_polygons(
+    col = "lightblue",        # Color of the polygons
+    border.col = "darkblue",   # Color of the borders
+    alpha = 0.3               # Set transparency for the fill (0 = fully transparent, 1 = fully opaque)
+  ) +
+  tm_basemap(server = "Esri.WorldImagery")
+
+
+```
+
+```{r}
+zones_sf_simplified <- st_simplify(zones_sf, dTolerance = 100)  # Simplify geometries
+tm_shape(zones_sf_simplified) + 
+  tm_polygons(col = "lightblue", alpha = 0.3) + 
+  tm_basemap(server = "Esri.WorldImagery")
 
 ```
 
