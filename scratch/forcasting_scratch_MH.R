@@ -9,6 +9,7 @@ library(dplyr)
 library(tsibble)
 library(lubridate)
 library(tseries)
+library(feasts)
 
 # Make specific forcasting dataframe
 whale_forecast <- whale_cleaned
@@ -25,10 +26,140 @@ whale_forecast$date_column <-
   as.Date(paste(whale_forecast$year, sprintf("%02d", whale_forecast$month),
                 "01", sep = "-"))
 
-whale_forecast_agg <- whale_forecast %>%
-  group_by(species, date_column) %>%
-  summarise(number_sighted = sum(number_sighted, na.rm = TRUE), .groups = "drop")
+### tsibble
+# Split the data by species
+whale_species_split <- whale_forecast %>%
+  group_by(species)  # assuming 'species' column identifies the species
 
+# Now, aggregate sightings by date for each species
+whale_agg_by_species <- whale_species_split %>%
+  group_by(species, date_column) %>%
+  summarise(total_sightings = sum(number_sighted, na.rm = TRUE), .groups = "drop")
+
+# Convert each species to a tsibble
+whale_blue_tsibble <- whale_agg_by_species %>%
+  filter(species == "Blue Whale") %>%
+  mutate(date_column = lubridate::ymd(date_column)) %>%
+  as_tsibble(key = NULL, index = date_column)
+
+whale_fin_tsibble <- whale_agg_by_species %>%
+  filter(species == "Fin Whale") %>%
+  mutate(date_column = lubridate::ymd(date_column)) %>%
+  as_tsibble(key = NULL, index = date_column)
+
+whale_hump_tsibble <- whale_agg_by_species %>%
+  filter(species == "Humpback Whale") %>%
+  mutate(date_column = lubridate::ymd(date_column)) %>%
+  as_tsibble(key = NULL, index = date_column)
+
+## Individual plots
+
+# Blue Whale
+ggplot(whale_blue_tsibble, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Blue Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+# Fin Whale
+ggplot(whale_fin_tsibble, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Fin Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+# Humpback Whale
+ggplot(whale_hump_tsibble, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Humpback Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+## combined on the same plot
+# Convert tsibbles to tibbles and add species column
+whale_blue_df <- as_tibble(whale_blue_tsibble) %>% mutate(species = "Blue Whale")
+whale_fin_df <- as_tibble(whale_fin_tsibble) %>% mutate(species = "Fin Whale")
+whale_hump_df <- as_tibble(whale_hump_tsibble) %>% mutate(species = "Humpback Whale")
+
+# Combine all species data into one data frame
+whale_combined <- bind_rows(whale_blue_df, whale_fin_df, whale_hump_df)
+
+# Plot combined data for all species
+ggplot(whale_combined, aes(x = date_column, y = total_sightings, color = species)) +
+  geom_line() +
+  labs(title = "Whale Sightings by Species", x = "Date", y = "Total Sightings") +
+  theme_minimal() +
+  scale_color_manual(values = c("darkblue", "darkred", "darkgreen"))
+
+
+# Extract year and month from date_column and create new columns for faceting
+whale_combined <- whale_combined %>%
+  mutate(year = year(date_column),
+         month = month(date_column, label = TRUE))
+
+# Plot the combined whale sightings with faceting by month
+ggplot(whale_combined, aes(x = year, y = total_sightings, color = species)) +
+  geom_line() +
+  facet_wrap(~month, labeller = label_both) +  # Facet by month
+  labs(x = "Year",
+       y = "Total Whale Sightings",
+       title = "Whale Sightings by Month and Species",
+       subtitle = "Aggregated sightings across species") +
+  scale_color_manual(values = c("darkblue", "darkred", "darkgreen")) +
+  theme_minimal()
+
+# Add year and month columns to each species tsibble
+whale_blue_tsibble <- whale_blue_tsibble %>%
+  mutate(year = year(date_column), 
+         month = month(date_column, label = TRUE))
+
+whale_fin_tsibble <- whale_fin_tsibble %>%
+  mutate(year = year(date_column), 
+         month = month(date_column, label = TRUE))
+
+whale_hump_tsibble <- whale_hump_tsibble %>%
+  mutate(year = year(date_column), 
+         month = month(date_column, label = TRUE))
+
+# Plot Blue Whale with faceting by month
+ggplot(whale_blue_tsibble, aes(x = year, y = total_sightings)) +
+  geom_line() +
+  facet_wrap(~month, scales = "free_y") +  # Facet by month
+  labs(title = "Blue Whale Sightings", x = "Year", y = "Total Sightings") +
+  theme_minimal()
+
+# Plot Fin Whale with faceting by month
+ggplot(whale_fin_tsibble, aes(x = year, y = total_sightings)) +
+  geom_line() +
+  facet_wrap(~month, scales = "free_y") +  # Facet by month
+  labs(title = "Fin Whale Sightings", x = "Year", y = "Total Sightings") +
+  theme_minimal()
+
+# Plot Humpback Whale with faceting by month
+ggplot(whale_hump_tsibble, aes(x = year, y = total_sightings)) +
+  geom_line() +
+  facet_wrap(~month, scales = "free_y") +  # Facet by month
+  labs(title = "Humpback Whale Sightings", x = "Year", y = "Total Sightings") +
+  theme_minimal()
+
+# Perform STL decomposition for Blue Whale
+dcmp_blue_whale <- whale_blue_tsibble %>%
+  model(STL(total_sightings ~ season(period = "1 year") + trend(window = 25)))
+
+# View decomposed components for Blue Whale
+components(dcmp_blue_whale) %>% 
+  autoplot() +
+  theme_minimal() +
+  labs(title = "STL Decomposition of Blue Whale Sightings", 
+       subtitle = "Seasonality and Trend Components", 
+       x = "Time", 
+       y = "Sightings")
+
+
+
+ --------------------
+# If it's not already a Date type, convert it
+whale_forecast$date_column <- as.Date(whale_forecast$date_column)
+
+# Verify it has been converted correctly
+str(whale_forecast$date_column)
 
 # Check data
 head(whale_forecast$date_column)
@@ -46,11 +177,19 @@ whale_blue_agg <- whale_blue_forcast |>
   group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
+# Convert to tsibble
+whale_blue_tsibble <- whale_blue_agg %>%
+  as_tsibble(index = date_column)
+
 # Fin Whales
 # Aggregated sightings by month and year
 whale_fin_agg <- whale_fin_forcast |>
   group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
+
+# Convert to tsibble
+whale_fin_ts <- whale_fin_agg %>%
+  as_tsibble(index = date_column)
 
 # For Humpback Whale
 # Aggregated sightings by month and year
@@ -58,35 +197,42 @@ whale_hump_agg <- whale_hump_forcast |>
   group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
+# Convert to tsibble
+whale_hump_ts <- whale_hump_agg %>%
+  as_tsibble(index = date_column)
+
 # Combined Time Series for All Species
 whale_combined_agg <- whale_forecast |>
   group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
+# Convert to tsibble
+whale_combined_ts <- whale_combined_agg %>%
+  as_tsibble(index = date_column)
+
 ## Visualize the Data
 
 # Plot time series for each species
-ggplot(whale_blue_agg, aes(x = date_column, y = total_sightings)) +
+ggplot(whale_blue_ts, aes(x = date_column, y = total_sightings)) +
   geom_line() +
   labs(title = "Blue Whale Sightings", x = "Date", y = "Total Sightings") +
   theme_minimal()
 
-ggplot(whale_fin_agg, aes(x = date_column, y = total_sightings)) +
+ggplot(whale_fin_ts, aes(x = date_column, y = total_sightings)) +
   geom_line() +
   labs(title = "Fin Whale Sightings", x = "Date", y = "Total Sightings") +
   theme_minimal()
 
-ggplot(whale_hump_agg, aes(x = date_column, y = total_sightings)) +
+ggplot(whale_hump_ts, aes(x = date_column, y = total_sightings)) +
   geom_line() +
   labs(title = "Humpback Whale Sightings", x = "Date", y = "Total Sightings") +
   theme_minimal()
 
 # Plot combined sightings for all species
-ggplot(whale_combined_agg, aes(x = date_column, y = total_sightings)) +
+ggplot(whale_combined_tsibble, aes(x = date_column, y = total_sightings)) +
   geom_line() +
   labs(title = "Combined Whale Sightings", x = "Date", y = "Total Sightings") +
   theme_minimal()
-
 
 ## Check for Stationarity
 
