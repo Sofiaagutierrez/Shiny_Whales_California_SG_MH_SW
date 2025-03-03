@@ -72,11 +72,7 @@ ui <- fluidPage(
   tabsetPanel( # Add tabsetPanel for tabs
     tabPanel("Data Information",  # First tab now
              h3("Project Motivation"),
-             p("The motivation for this project is ..."),
-             h3("Data Summary"), 
-             p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
-               As detailed by Anastaia, the relevant columns for this Shiny App include the X, Y position of the whale observation, 
-               the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time.")
+             p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California..."), 
     ),
     tabPanel("Whale Sightings Trends and Seasonality",  # Second tab (was first)
              sidebarLayout(
@@ -85,19 +81,21 @@ ui <- fluidPage(
                    inputId = "whale_species", 
                    label = "Choose whale species", 
                    choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  # Add "All Species" option
-                 ), 
+                 ),
+                 selectInput(inputId = "time_series",
+                             label = "Choose Time Series View",
+                             choices = c("Annual", "Monthly")),
                  h3("Summary Statistics"),  # Place the title here for the table
                  tableOutput(outputId = "whale_sum_table"), 
-                 plotOutput(outputId = "whale_plot") # Display summary table in the sidebar
+                  # Display summary table in the sidebar
                ), 
                mainPanel(
+                 plotOutput(outputId = "whale_plot"), 
                  plotOutput(outputId = "whale_plot2"), # Second plot (Total Sightings per Month-Year)
                  plotOutput(outputId = "whale_season_plot") # New stacked bar chart plot
                )
              )
-    ), 
-    
-    # Tab for Zones Map
+    ),
     tabPanel("Interactive Map ", 
              sidebarLayout(
                sidebarPanel(
@@ -168,26 +166,27 @@ server <- function(input, output) {
     }
   })
   
-  # Render the first plot (Time Series)
+  # Render the plot (Time Series)
   output$whale_plot <- renderPlot({
-    ggplot(whale_select(), aes(x = year, y = Total_Value, color = species)) + 
-      geom_line(color = "steelblue2") +  
-      theme_bw() +
-      labs(title = paste(input$whale_species, "Annual Sightings (2014-2024)"), 
-           x = "Year", 
-           y = "Number of Sightings") +
-      scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  # Show every year on the x-axis
-  })
-  
-  # Render the second plot (Total Whale Sightings per Species by Month-Year)
-  output$whale_plot2 <- renderPlot({
-    ggplot(whale_sightings_select(), aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
-      geom_line(color = "steelblue2") +  # Line plot for sightings over time
-      labs(title = paste(input$whale_species, "Monthly Sightings (2014-2024)"),
-           x = "Date",
-           y = "Total Sightings") +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels by 45 degrees
+    if (input$time_series == "Annual") {
+      # Annual Time Series Plot
+      ggplot(whale_select(), aes(x = year, y = Total_Value, color = species)) + 
+        geom_line(color = "steelblue2") +  
+        theme_bw() +
+        labs(title = paste(input$whale_species, "Annual Sightings (2014-2024)"), 
+             x = "Year", 
+             y = "Number of Sightings") +
+        scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  # Show every year on the x-axis
+    } else if (input$time_series == "Monthly") {
+      # Monthly Time Series Plot
+      ggplot(whale_sightings_select(), aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
+        geom_line(color = "steelblue2") +  # Line plot for sightings over time
+        labs(title = paste(input$whale_species, "Monthly Sightings (2014-2024)"),
+             x = "Date",
+             y = "Total Sightings") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels by 45 degrees
+    }
   })
   
   # Render the stacked bar chart (Sightings by Species and Season)
@@ -229,7 +228,6 @@ server <- function(input, output) {
   output$whale_sum_table <- renderTable({
     whale_sum_table()
   })
-  
   
   # Render tmap
   output$whale_map <- renderTmap({
