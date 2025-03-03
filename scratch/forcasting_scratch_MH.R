@@ -11,6 +11,26 @@ library(lubridate)
 library(tseries)
 library(feasts)
 
+-----------------------#saving data ------------------
+# Ensure the data directory exists
+dir.create("data", showWarnings = FALSE)
+
+# Save dataframes as CSV files
+write.csv(whale_forecast, "data/whale_forecast.csv", row.names = FALSE)
+write.csv(whale_blue_tsibble, "data/whale_blue_tsibble.csv", row.names = FALSE)
+write.csv(whale_fin_tsibble, "data/whale_fin_tsibble.csv", row.names = FALSE)
+write.csv(whale_hump_tsibble, "data/whale_hump_tsibble.csv", row.names = FALSE)
+write.csv(whale_blue_agg, "data/whale_blue_agg.csv", row.names = FALSE)
+write.csv(whale_fin_agg, "data/whale_fin_agg.csv", row.names = FALSE)
+write.csv(whale_hump_agg, "data/whale_hump_agg.csv", row.names = FALSE)
+write.csv(whale_combined, "data/whale_combined.csv", row.names = FALSE)
+write.csv(whale_blue_df, "data/whale_blue_df.csv", row.names = FALSE)
+write.csv(whale_fin_df, "data/whale_fin_df.csv", row.names = FALSE)
+write.csv(whale_hump_df, "data/whale_hump_df.csv", row.names = FALSE)
+write.csv(whale_combined_agg, "data/whale_combined_agg.csv", row.names = FALSE)
+
+-----------------------# saving data-------------
+
 # Make specific forecasting dataframe
 whale_forecast <- whale_cleaned
 
