@@ -26,6 +26,10 @@ whale_forecast$date_column <-
   as.Date(paste(whale_forecast$year, sprintf("%02d", whale_forecast$month),
                 "01", sep = "-"))
 
+# Example: if year = 2021, month = 3
+whale_forecast$date_column <- as.Date(paste(whale_forecast$year, sprintf("%02d", whale_forecast$month), "01", sep = "-"))
+
+
 ### tsibble
 # Split the data by species
 whale_species_split <- whale_forecast %>%
@@ -51,6 +55,10 @@ whale_hump_tsibble <- whale_agg_by_species %>%
   filter(species == "Humpback Whale") %>%
   mutate(date_column = lubridate::ymd(date_column)) %>%
   as_tsibble(key = NULL, index = date_column)
+
+## Decomposition Plot
+
+
 
 ## Individual plots
 
@@ -151,6 +159,49 @@ components(dcmp_blue_whale) %>%
        subtitle = "Seasonality and Trend Components", 
        x = "Time", 
        y = "Sightings")
+
+# Decomp
+
+# Decompose the time series into trend, seasonal, and residual components
+whale_blue_decomp <- decompose(whale_blue_tsibble)
+
+# Plot decomposition components
+autoplot(whale_blue_decomp) + 
+  ggtitle("Decomposition of Blue Whale Sightings") +
+  theme_minimal()
+
+# Fin Whale - Decomposition
+whale_fin_decomp <- whale_fin_tsibble %>%
+  model(
+    STL(total_sightings ~ season(period = "1 year") + trend(window = 25))
+  )
+
+# Plot decomposition components for Fin Whale
+components(whale_fin_decomp) %>%
+  autoplot() +
+  labs(title = "STL Decomposition of Fin Whale Sightings", 
+       subtitle = "Seasonality and Trend Components", 
+       x = "Time", 
+       y = "Sightings") +
+  theme_minimal()
+
+
+# Humpback Whale - Decomposition
+whale_hump_decomp <- whale_hump_tsibble %>%
+  model(
+    STL(total_sightings ~ season(period = "1 year") + trend(window = 25))
+  )
+
+# Plot decomposition components for Humpback Whale
+components(whale_hump_decomp) %>%
+  autoplot() +
+  labs(title = "STL Decomposition of Humpback Whale Sightings", 
+       subtitle = "Seasonality and Trend Components", 
+       x = "Time", 
+       y = "Sightings") +
+  theme_minimal()
+
+
 
 
 
