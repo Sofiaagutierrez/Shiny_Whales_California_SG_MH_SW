@@ -223,13 +223,15 @@ server <- function(input, output) {
   
   # Render tmap 
   output$whale_map <- renderTmap({
-    tmap_mode("view")  # Enable interactive mode
-    tm_shape(zones_sf) +
+    tmap_mode("view")# Enable interactive mode
+    tm_shape(zones_sf)
       tm_polygons(
-        col= "lightblue", #color for polygons
-        border.col = "darkblue", #color for borders
-        alpha = 0.3)
-      tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
+      col= "lightblue", #color for polygons
+      border.col = "darkblue", #color for borders
+      alpha = 0.3) +
+    tm_shape(zones_sf) +
+      tm_borders()+
+    tm_basemap(server = "Esri.WorldImagery", max.native.zoom = 12) # Use an Esri basemap
 
       
   })
