@@ -10,6 +10,7 @@ library(tseries)
 library(feasts)
 library(forecast)
 
+
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
 
@@ -23,9 +24,12 @@ whale_relevant <- whale_raw |>
   summarize(Total_Value = sum(number_sighted), .groups = "drop")
 
 # for map, converting data into sf
-whale_sf <- whale_raw |> 
-  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
+#whale_sf <- whale_raw %>% 
+  #filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
+  #st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
+
+#for map, calling zones file
+zones_sf <- st_read("data/zones_shapefile.shp")
 
 # Custom CSS to incorporate elements from the "lumen" theme
 custom_css <- "
@@ -140,7 +144,7 @@ ui <- fluidPage(
   )
 )
 
-# Create the server function 
+#Create the server function 
 server <- function(input, output) {
   
   # Reactive expression for the filtered whale data based on the selected species
@@ -200,29 +204,34 @@ server <- function(input, output) {
   })
   
   # Reactive expression to filter whale data for mapping
-  whale_map_data <- reactive({
-    if (input$map_species == "All Species") {
-      return(whale_sf)  # Return all species data
-    } else {
+  #whale_map_data <- reactive({
+    #if (input$map_species == "All Species") {
+      #return(whale_sf)  # Return all species data
+    #} else {
       # Filter by species (if map_species input is implemented)
-    }
-  })
+    #}
+  #})
   
   # Reactive expression for reading zones shapefile
-  zones_sf <- reactive({
-    req(input$zones_shapefile)  # Ensure that file is uploaded
+  #zones_sf <- reactive({
+    #req(input$zones_sf)  # Ensure that file is uploaded
     # Construct the file path to read the shapefile
-    zone_file <- input$zones_shapefile$datapath
+    #zone_file <- input$zones_sf$datapath
     # Read the shapefile using sf::st_read
-    st_read(zone_file)
-  })
+    #st_read(zone_file)
+  #})
   
   # Render tmap 
   output$whale_map <- renderTmap({
     tmap_mode("view")  # Enable interactive mode
-    tm_shape(zones_sf()) +
-      tm_dots(col = "species", palette = "Set1", size = 0.3) +
+    tm_shape(zones_sf) +
+      tm_polygons(
+        col= "lightblue", #color for polygons
+        border.col = "darkblue", #color for borders
+        alpha = 0.3)
       tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
+
+      
   })
     # For species selection, filter the data
     filtered_whale_data <- reactive({
