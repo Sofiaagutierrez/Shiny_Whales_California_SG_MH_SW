@@ -6,11 +6,14 @@ library(forecast)
 library(tidyverse)
 library(ggplot2)
 library(dplyr)
+library(tsibble)
+library(lubridate)
+library(tseries)
 
 # Make specific forcasting dataframe
 whale_forecast <- whale_cleaned
 
-# Check structure ofdate columns
+# Check structure of date columns
 str(whale_forecast$year)
 str(whale_forecast$month) 
 
@@ -21,6 +24,11 @@ whale_forecast$month <- match(whale_forecast$month, month.abb)
 whale_forecast$date_column <- 
   as.Date(paste(whale_forecast$year, sprintf("%02d", whale_forecast$month),
                 "01", sep = "-"))
+
+whale_forecast_agg <- whale_forecast %>%
+  group_by(species, date_column) %>%
+  summarise(number_sighted = sum(number_sighted, na.rm = TRUE), .groups = "drop")
+
 
 # Check data
 head(whale_forecast$date_column)
@@ -35,25 +43,113 @@ whale_hump_forcast <- subset(whale_forecast, species == "Humpback Whale")
 # Blue Whales
 # Aggregated sightings by month and year
 whale_blue_agg <- whale_blue_forcast |>
-  group_by(year, month) |>
+  group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
 # Fin Whales
 # Aggregated sightings by month and year
 whale_fin_agg <- whale_fin_forcast |>
-  group_by(year, month) |>
+  group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
 # For Humpback Whale
 # Aggregated sightings by month and year
 whale_hump_agg <- whale_hump_forcast |>
-  group_by(year, month) |>
+  group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
 # Combined Time Series for All Species
 whale_combined_agg <- whale_forecast |>
-  group_by(year, month) |>
+  group_by(date_column) |>
   summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
+
+## Visualize the Data
+
+# Plot time series for each species
+ggplot(whale_blue_agg, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Blue Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+ggplot(whale_fin_agg, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Fin Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+ggplot(whale_hump_agg, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Humpback Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+# Plot combined sightings for all species
+ggplot(whale_combined_agg, aes(x = date_column, y = total_sightings)) +
+  geom_line() +
+  labs(title = "Combined Whale Sightings", x = "Date", y = "Total Sightings") +
+  theme_minimal()
+
+
+## Check for Stationarity
+
+# Perform Augmented Dickey-Fuller test to check for stationarity
+
+adf.test(whale_blue_agg$total_sightings)
+adf.test(whale_fin_agg$total_sightings)
+adf.test(whale_hump_agg$total_sightings)
+adf.test(whale_combined_agg$total_sightings)
+
+##  Fit Time Series Forecasting Models
+
+# Load the forecast library for ARIMA models
+
+# Fit ARIMA model for each species
+whale_blue_arima <- auto.arima(whale_blue_agg$total_sightings)
+whale_fin_arima <- auto.arima(whale_fin_agg$total_sightings)
+whale_hump_arima <- auto.arima(whale_hump_agg$total_sightings)
+
+# For combined sightings
+whale_combined_arima <- auto.arima(whale_combined_agg$total_sightings)
+
+# Summary of the ARIMA models
+summary(whale_blue_arima)
+summary(whale_fin_arima)
+summary(whale_hump_arima)
+summary(whale_combined_arima)
+
+## Forecasting
+
+# Next 48 months (4 years)
+blue_forecast <- forecast(whale_blue_arima, h=48)
+fin_forecast <- forecast(whale_fin_arima, h=48)
+hump_forecast <- forecast(whale_hump_arima, h=48)
+combined_forecast <- forecast(whale_combined_arima, h=48)
+
+# Plot the forecasts
+autoplot(blue_forecast) + ggtitle("Blue Whale Sightings Forecast")
+autoplot(fin_forecast) + ggtitle("Fin Whale Sightings Forecast")
+autoplot(hump_forecast) + ggtitle("Humpback Whale Sightings Forecast")
+autoplot(combined_forecast) + ggtitle("Combined Whale Sightings Forecast")
+
+
+##  Model Diagnostics
+
+# Check residuals for each model
+checkresiduals(whale_blue_arima)
+checkresiduals(whale_fin_arima)
+checkresiduals(whale_hump_arima)
+checkresiduals(whale_combined_arima)
+
+## Review and Interpret Results
+
+# Calculate MAE or RMSE
+accuracy(whale_blue_forecast)
+accuracy(whale_fin_forecast)
+accuracy(whale_hump_forecast)
+accuracy(whale_combined_forecast)
+
+
+``
+
+--------------------------
 
 ## Decomposition Plots ****something is wrong with the ts data - 
 # - not showing full data (ending in 2020 vs. 2024) 
