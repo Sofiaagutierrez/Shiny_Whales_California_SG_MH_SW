@@ -6,6 +6,9 @@ library(tmaptools)
 library(shiny)
 library(shinythemes)
 library(here)
+library(tseries)
+library(feasts)
+library(forecast)
 
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
