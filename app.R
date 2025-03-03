@@ -144,16 +144,16 @@ server <- function(input, output) {
   })
   
   # Example reactive table (if required)
-  penguin_sum_table <- reactive({
-    penguin_summary_df <- penguins |> 
+  whale_sum_table <- reactive({
+    whale_summary_df <- penguins |> 
       filter(species == input$penguin_species) |> 
       group_by(sex) |> 
       summarize(mean_flip = mean(flipper_length_mm, na.rm = TRUE), 
                 mean_mass = mean(body_mass_g, na.rm = TRUE))
   })
   
-  output$penguin_table <- renderTable({
-    penguin_sum_table()
+  output$whale_table <- renderTable({
+    whale_sum_table()
   }) 
 
   #Reactive expression to filter whale data for mapping

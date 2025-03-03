@@ -5,26 +5,68 @@
 library(tidyverse)
 library(here)
 library(janitor)
-library(dplyr)
+library(dplyr) 
+library(ggplot2)
 
 # Load in the data 
 
 whale_data <- read_csv(here("data", "whale_cleaned.csv"))
 
+
 # Time series plot test 
 
 # first create a new df with grouped by count of whale type 
 
+whale_sightings <- whale_data %>%
+  group_by(species, year, month) %>%
+  summarize(total_sighted = sum(number_sighted), .groups = "drop")
+
+ggplot(whale_sightings, aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
+  geom_line() +  # Use geom_line() for time series plot
+  labs(title = "Total Whale Sightings per Species Over Time",
+       x = "Month-Year",
+       y = "Total Sightings") +
+  scale_color_manual(values = c(
+    "Humpback Whale" = "steelblue",  # Light blue
+    "Fin Whale" = "deepskyblue",    # Medium blue
+    "Blue Whale" = "royalblue"      # Dark blue
+  )) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels by 45 degrees
+
+#######################################################################
+#Summary stats table
+# Summarize the total sightings by species and year
+whale_sightings_summary <- whale_data %>%
+  group_by(species, year) %>%
+  summarize(
+    total_sighted = sum(number_sighted),  # Total sightings
+    .groups = "drop"
+  )
+
+# Pivot the data to get species as columns
+whale_sightings_pivot <- whale_sightings_summary %>%
+  pivot_wider(names_from = species, values_from = total_sighted, values_fill = list(total_sighted = 0))
+
+# View the pivoted table
+print(whale_sightings_pivot)
+
+
+
 
 whale_relevant <- whale_data |> 
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
-  group_by(species, year) |> 
+  group_by(species) |> 
   summarize(Total_Value = sum(number_sighted), .groups = "drop")
 
 
 
+plot <- ggplot(data = whale_relevant, aes(x = month, y = Total_Value, color = species)) + 
+  geom_line()
+plot
+
 # Create the plot with custom blue colors
-ggplot(whale_relevant, aes(x = year, y = Total_Value, color = species)) +
+ggplot(whale_relevant, aes(x = month, y = Total_Value, color = species)) +
   geom_line() +  # Use geom_line() for a time series line plot
   geom_point() + # Add points for clarity
   labs(title = "Whale Sightings Over Time",
@@ -36,3 +78,63 @@ ggplot(whale_relevant, aes(x = year, y = Total_Value, color = species)) +
     "Blue Whale" = "steelblue4"       # Dark blue
   )) +
   theme_minimal()
+
+#########################################################################################
+# Pt 2 with all data 
+
+whale_test <- read_csv(here("data", "raw_data_stella.csv"))
+
+whale_date <- whale_test %>%
+  mutate(create_date = ymd_hms(create_date),        # Parse the datetime
+    date = as.Date(create_date)) %>%
+  select(-create_date) |> 
+  filter(whale_alert_species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
+  group_by(whale_alert_species, date) |> 
+  summarize(Total_Value = sum(number_sighted), .groups = "drop")
+
+whale_plot_detialed <- ggplot(whale_date, aes(x = date, y = Total_Value, color = whale_alert_species)) +
+  geom_line() +  # Use geom_line() for a time series line plot
+  geom_point() + # Add points for clarity
+  labs(title = "Whale Sightings Over Time",
+       x = "Year",
+       y = "Number of Sightings") +
+  scale_color_manual(values = c(
+    "Humpback Whale" = "steelblue",  # Light blue
+    "Fin Whale" = "steelblue2",       # Medium blue
+    "Blue Whale" = "steelblue4"       # Dark blue
+  )) +
+  theme_minimal()
+whale_plot_detialed
+
+
+##########################################################################################
+#Seasonality Plot 
+
+# want to create a new widget where you can summer, winter, spring, fall and then show the population dynaics for those month 
+# stacked bar 
+
+# Assuming your data frame is named whale_sightings
+# Aggregating the total sightings by species, year, and month
+whale_sightings_aggregated <- whale_sightings %>%
+  group_by(species, year, month) %>%
+  summarize(total_sighted = sum(total_sighted), .groups = 'drop')
+
+# Create the stacked bar chart
+ggplot(whale_sightings_aggregated, aes(x = interaction(year, month), y = total_sighted, fill = species)) +
+  geom_bar(stat = "identity") +  # Create the bar chart
+  labs(title = "Seasonal Whale Population Trends",
+       x = "Month-Year",
+       y = "Total Sightings",
+       fill = "Species") +
+  scale_x_discrete(labels = function(x) paste0(substring(x, 1, 4), "-", substring(x, 5, 6))) + # Format x-axis as "Year-Month"
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+
+
+
+
+
+
+
+

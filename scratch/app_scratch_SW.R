@@ -1,16 +1,28 @@
 library(tidyverse)
 library(palmerpenguins)
+library(sf)
+library(tmap)
+library(tmaptools)
 library(shiny)
 library(shinythemes)
 library(here)
 
 # Read in the Whale Alert CSV
-whale_raw <- read_csv("data/whale_cleaned.csv")
+whale_raw <- read_csv(here("data", "whale_cleaned.csv"))
 
 whale_relevant <- whale_raw |> 
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
   group_by(species, year) |> 
   summarize(Total_Value = sum(number_sighted), .groups = "drop")
+
+whale_sightings <- whale_raw %>%
+  group_by(species, year, month) %>%
+  summarize(total_sighted = sum(number_sighted), .groups = "drop")
+
+#for map,converting data into sf
+whale_sf <- whale_raw |> 
+  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) |> 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
 
 # Custom CSS to incorporate elements from the "lumen" theme
 custom_css <- "
@@ -61,19 +73,29 @@ ui <- fluidPage(
                    label = "Choose whale species", 
                    choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  # Add "All Species" option
                  ), 
-                 selectInput(inputId = "pt_color", 
-                             label = "Select Point Color", 
-                             choices = c("Roses are red" = "red",
-                                         "Violets are purple" = "purple",
-                                         "Oranges are ..." = "orange"))
                ), 
                mainPanel(
                  plotOutput(outputId = "whale_plot"), 
                  h3("Summary Table"), 
-                 tableOutput(outputId = "penguin_table")
+                 p("This table summarizes the total number of whale sightings for each species across the years. 
+                   The data is aggregated by year and species to help identify trends and patterns in whale populations."), 
+                 tableOutput(outputId = "whale_sum_table")
                )
              )
     ), 
+    
+    # Tab for Zones Map
+    tabPanel("Interactive Map ", 
+             sidebarLayout(
+               sidebarPanel(
+                 p("This section will display a map of different zones.")
+               ),
+               mainPanel(
+                 tmapOutput("whale_map")  # Display the map
+               )
+             )
+    ), 
+    
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
              h3("Advanced Exploratory Data Analysis"),
              p("This section will contain advanced exploratory data analysis features. Currently, it is under development.")
@@ -104,35 +126,67 @@ server <- function(input, output) {
   # Reactive expression for the filtered whale data based on the selected species
   whale_select <- reactive({
     if (input$whale_species == "All Species") {
-      return(whale_relevant)  # Return all species data
+      return(whale_sightings)  # Return all species data
     } else {
-      return(whale_relevant |> filter(species == input$whale_species))  # Filter by selected species
+      return(whale_sightings %>% filter(species == input$whale_species))  # Filter by selected species
     }
   })
   
   # Render the plot based on the filtered data
   output$whale_plot <- renderPlot({
-    ggplot(whale_select(), aes(x = year, y = Total_Value, color = species)) + 
-      geom_line() +  # Line plot for time series
-      geom_point(color = input$pt_color) +  # Point color based on user input
-      theme_bw() +
+    ggplot(whale_select(), aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
+      geom_line() +  # Use geom_line() for time series plot
       labs(title = paste(input$whale_species, "Sightings Over Time"), 
            x = "Year", 
            y = "Number of Sightings") +
-      scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  # Show every year on the x-axis
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels by 45 degrees
   })
   
+
   # Example reactive table (if required)
-  penguin_sum_table <- reactive({
-    penguin_summary_df <- penguins |> 
-      filter(species == input$penguin_species) |> 
-      group_by(sex) |> 
-      summarize(mean_flip = mean(flipper_length_mm, na.rm = TRUE), 
-                mean_mass = mean(body_mass_g, na.rm = TRUE))
+  whale_sum_table <- reactive({
+    whale_sightings_summary <- whale_sightings %>%
+      group_by(species, year) %>%
+      summarize(
+        total_sighted = sum(total_sighted),  # Sum of the total_sighted
+        .groups = "drop") |> 
+      pivot_wider(names_from = species, values_from = total_sighted, values_fill = list(total_sighted = 0))
+    
+    return(whale_sightings_summary)  # Explicitly return the summary table
   })
   
-  output$penguin_table <- renderTable({
-    penguin_sum_table()
+  # Render the table based on the reactive data
+  output$whale_sum_table <- renderTable({
+    whale_sum_table()  # Use the reactive function to get the data
+  })
+  
+  
+  
+  #Reactive expression to filter whale data for mapping
+  whale_map_data <- reactive({
+    if (input$map_species == "All Species") {
+      return(whale_sf)  # Return all species data
+    } else {
+      #return(whale_sf |> filter(species == input$map_species))  # Filter by species
+    }
+  })
+  
+  #Reactive expression for reading zones shapefile
+  zones_sf <- reactive({
+    req(input$zones_shapefile)  # Ensure that file is uploaded
+    #Construct the file path to read the shapefile
+    zone_file <- input$zones_shapefile$datapath
+    #Read the shapefile using sf::st_read
+    st_read(zone_file)
+  })
+  
+  #Render tmap 
+  output$whale_map <- renderTmap({
+    tmap_mode("view")  # Enable interactive mode
+    tm_shape(zones_sf()) +
+      tm_dots(col = "species", palette = "Set1", size = 0.3) +
+      tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
   })
 }
 
