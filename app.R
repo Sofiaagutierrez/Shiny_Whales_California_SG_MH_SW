@@ -100,8 +100,22 @@ ui <- fluidPage(
     ), 
     
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
-             h3("Advanced Exploratory Data Analysis"),
-             p("This section will contain advanced exploratory data analysis features. Currently, it is under development.")
+             sidebarLayout(
+               sidebarPanel(
+                 radioButtons(inputId = "forecast_species", 
+                              label = "Select Whale Species", 
+                              choices = c("Blue Whale", "Fin Whale", "Humpback Whale", "All Species"), 
+                              selected = "All Species"),
+                 checkboxInput(inputId = "show_decomposition", 
+                               label = "Show Decomposition", 
+                               value = TRUE)  # Checkbox to control visibility of decomposition
+               ),
+               mainPanel(
+                 # Output for the decomposition plot and forecasts
+                 plotOutput("whale_forecast_plot"),
+                 plotOutput("whale_decomp_plot")
+               )
+             )
     ),
     tabPanel("Additional Resources", 
              h4("For more information on reducing whale strikes, check out the following document:"),
@@ -207,7 +221,52 @@ server <- function(input, output) {
       tm_dots(col = "species", palette = "Set1", size = 0.3) +
       tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
   })
-}
+    # For species selection, filter the data
+    filtered_whale_data <- reactive({
+      if (input$forecast_species == "Blue Whale") {
+        return(whale_blue_agg)
+      } else if (input$forecast_species == "Fin Whale") {
+        return(whale_fin_agg)
+      } else if (input$forecast_species == "Humpback Whale") {
+        return(whale_hump_agg)
+      } else {
+        return(whale_combined_agg)  # For "All Species"
+      }
+    })
+    
+    # The time series and perform decomposition for the selected species
+    output$whale_decomp_plot <- renderPlot({
+      whale_data <- filtered_whale_data()
+      
+      # Convert to time series object
+      whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
+      whale_decomp <- decompose(whale_ts)
+      
+      if (input$show_decomposition) {
+        autoplot(whale_decomp) + 
+          ggtitle(paste("Decomposition of", input$forecast_species, "Sightings")) +
+          theme_minimal()
+      } else {
+        NULL  # Don't show the decomposition plot if unchecked
+      }
+    })
+    
+    # Forecasting (Seasonal Naive Method) for the selected species
+    output$whale_forecast_plot <- renderPlot({
+      whale_data <- filtered_whale_data()
+      
+      # Convert to time series object
+      whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
+      whale_forecast <- snaive(whale_ts, h = 36)  # Forecast 3 years ahead
+      
+      autoplot(whale_forecast) + 
+        ggtitle(paste("Seasonal Naive Forecast for", input$forecast_species, "Sightings")) +
+        theme_minimal() +
+        xlab("Year") + 
+        ylab("Total Sightings")
+    })
+    
+  }
 
 # Combine them into an app
 shinyApp(ui = ui, server = server)

@@ -11,7 +11,7 @@ library(lubridate)
 library(tseries)
 library(feasts)
 
-# Make specific forcasting dataframe
+# Make specific forecasting dataframe
 whale_forecast <- whale_cleaned
 
 # Check structure of date columns
@@ -56,9 +56,21 @@ whale_hump_tsibble <- whale_agg_by_species %>%
   mutate(date_column = lubridate::ymd(date_column)) %>%
   as_tsibble(key = NULL, index = date_column)
 
-## Decomposition Plot
+# Blue Whales
+# Aggregated sightings by month and year
+whale_blue_agg <- whale_blue_forcast |>
+  group_by(date_column) |>
+  summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
+# Convert to tsibble
+whale_blue_tsibble <- whale_blue_agg %>%
+  as_tsibble(index = date_column)
 
+# Fin Whales
+# Aggregated sightings by month and year
+whale_fin_agg <- whale_fin_forcast |>
+  group_by(date_column) |>
+  summarise(total_sightings = sum(number_sighted, na.rm = TRUE))
 
 ## Individual plots
 
@@ -147,65 +159,161 @@ ggplot(whale_hump_tsibble, aes(x = year, y = total_sightings)) +
   labs(title = "Humpback Whale Sightings", x = "Year", y = "Total Sightings") +
   theme_minimal()
 
-# Perform STL decomposition for Blue Whale
-dcmp_blue_whale <- whale_blue_tsibble %>%
-  model(STL(total_sightings ~ season(period = "1 year") + trend(window = 25)))
+## Decomposition Plots ****something is wrong with the ts data - 
+# - not showing full data (ending in 2020 vs. 2024) 
 
-# View decomposed components for Blue Whale
-components(dcmp_blue_whale) %>% 
-  autoplot() +
-  theme_minimal() +
-  labs(title = "STL Decomposition of Blue Whale Sightings", 
-       subtitle = "Seasonality and Trend Components", 
-       x = "Time", 
-       y = "Sightings")
+# Blue Whales
+whale_blue_agg %>%
+  group_by(year, month) %>%
+  summarise(count = n())
 
-# Decomp
+whale_blue_ts <- ts(whale_blue_agg$total_sightings, 
+                    start = c(2014, 1),  # assuming data starts from Jan 2014
+                    end = c(2024, 12),    # assuming data ends in Dec 2024
+                    frequency = 12)
+whale_blue_ts
 
 # Decompose the time series into trend, seasonal, and residual components
-whale_blue_decomp <- decompose(whale_blue_tsibble)
+whale_blue_decomp <- decompose(whale_blue_ts)
 
 # Plot decomposition components
 autoplot(whale_blue_decomp) + 
   ggtitle("Decomposition of Blue Whale Sightings") +
   theme_minimal()
 
-# Fin Whale - Decomposition
-whale_fin_decomp <- whale_fin_tsibble %>%
-  model(
-    STL(total_sightings ~ season(period = "1 year") + trend(window = 25))
-  )
+# Fin Whales 
 
-# Plot decomposition components for Fin Whale
-components(whale_fin_decomp) %>%
-  autoplot() +
-  labs(title = "STL Decomposition of Fin Whale Sightings", 
-       subtitle = "Seasonality and Trend Components", 
-       x = "Time", 
-       y = "Sightings") +
+# Extract year and month from the date column in the whale_fin_agg dataset
+whale_fin_agg <- whale_fin_agg %>%
+  mutate(year = year(date_column), month = month(date_column))
+
+# Now you can group by year and month
+whale_fin_agg %>%
+  group_by(year, month) %>%
+  summarise(count = n())
+
+# Convert the total sightings of fin whales into a time series object
+whale_fin_ts <- ts(whale_fin_agg$total_sightings, 
+                   start = c(2014, 1),  # assuming data starts from Jan 2014
+                   end = c(2024, 12),    # assuming data ends in Dec 2024
+                   frequency = 12)
+
+# Decompose the time series into trend, seasonal, and residual components
+whale_fin_decomp <- decompose(whale_fin_ts)
+
+# Plot decomposition components
+autoplot(whale_fin_decomp) + 
+  ggtitle("Decomposition of Fin Whale Sightings") +
   theme_minimal()
 
 
-# Humpback Whale - Decomposition
-whale_hump_decomp <- whale_hump_tsibble %>%
-  model(
-    STL(total_sightings ~ season(period = "1 year") + trend(window = 25))
-  )
+# Humpback Whales
+# Extract year and month from the date column in the whale_humpback_agg dataset
+whale_hump_agg <- whale_hump_agg %>%
+  mutate(year = year(date_column), month = month(date_column))
 
-# Plot decomposition components for Humpback Whale
-components(whale_hump_decomp) %>%
-  autoplot() +
-  labs(title = "STL Decomposition of Humpback Whale Sightings", 
-       subtitle = "Seasonality and Trend Components", 
-       x = "Time", 
-       y = "Sightings") +
+# Now group by year and month and summarize the count
+whale_hump_agg %>%
+  group_by(year, month) %>%
+  summarise(count = n())
+
+# Convert the total sightings of humpback whales into a time series object
+whale_hump_ts <- ts(whale_hump_agg$total_sightings, 
+                        start = c(2014, 1),  # assuming data starts from Jan 2014
+                        end = c(2024, 12),    # assuming data ends in Dec 2024
+                        frequency = 12)
+
+# Decompose the time series into trend, seasonal, and residual components
+whale_hump_decomp <- decompose(whale_hump_ts)
+
+# Plot decomposition components
+autoplot(whale_hump_decomp) + 
+  ggtitle("Decomposition of Humpback Whale Sightings") +
+  theme_minimal()
+
+
+# All Species
+
+# Extract year and month from the date column in the whale_combined_agg dataset
+whale_combined_agg <- whale_combined_agg %>%
+  mutate(year = year(date_column), month = month(date_column))
+
+# Group by year and month and summarize the total sightings
+whale_combined_agg %>%
+  group_by(year, month) %>%
+  summarise(count = n())
+
+# Create a time series object
+whale_combined_ts <- ts(whale_combined_agg$total_sightings, 
+                        start = c(min(whale_combined_agg$year), min(whale_combined_agg$month)), 
+                        frequency = 12)
+
+# Decompose the combined time series
+whale_combined_decomp <- decompose(whale_combined_ts)
+
+# Plot the decomposition
+autoplot(whale_combined_decomp) + 
+  ggtitle("Decomposition of All Whale Sightings") +
+  theme_minimal()
+
+
+## Yearly Time Series Forecasting - Seasonal Naive Method
+
+# Blue Whales
+
+# Forecast using Seasonal Naive Method for Blue Whale
+whale_blue_forecast <- snaive(whale_blue_ts, h = 36)  # h = 36 for 3 years of forecast
+
+# Plot the forecast
+autoplot(whale_blue_forecast) + 
+  ggtitle("Seasonal Naive Forecast for Blue Whale Sightings") +
+  xlab("Year") + 
+  ylab("Total Sightings") +
+  theme_minimal()
+
+
+# Fin Whales
+
+# Forecast using Seasonal Naive Method for Fin Whale
+whale_fin_forecast <- snaive(whale_fin_ts, h = 36)  # h = 36 for 3 years of forecast
+
+# Plot the forecast
+autoplot(whale_fin_forecast) + 
+  ggtitle("Seasonal Naive Forecast for Fin Whale Sightings") +
+  xlab("Year") + 
+  ylab("Total Sightings") +
+  theme_minimal()
+
+#  Humpback Whales
+
+# Forecast using Seasonal Naive Method for Humpback Whale
+whale_hump_forecast <- snaive(whale_hump_ts, h = 36)  # h = 36 for 3 years of forecast
+
+# Plot the forecast
+autoplot(whale_hump_forecast) + 
+  ggtitle("Seasonal Naive Forecast for Humpback Whale Sightings") +
+  xlab("Year") + 
+  ylab("Total Sightings") +
+  theme_minimal()
+
+# Combined Forecasting
+
+# Forecast using Seasonal Naive Method for All Species
+whale_combined_forecast <- snaive(whale_combined_ts, h = 36)  # h = 36 for 3 years of forecast
+
+# Plot the forecast
+autoplot(whale_combined_forecast) + 
+  ggtitle("Seasonal Naive Forecast for All Whale Sightings") +
+  xlab("Year") + 
+  ylab("Total Sightings") +
   theme_minimal()
 
 
 
+## Monthly time series forecasting (???)
 
+__________________________________________________
 
- --------------------
 # If it's not already a Date type, convert it
 whale_forecast$date_column <- as.Date(whale_forecast$date_column)
 
@@ -347,117 +455,6 @@ accuracy(whale_combined_forecast)
 ``
 
 --------------------------
-
-## Decomposition Plots ****something is wrong with the ts data - 
-# - not showing full data (ending in 2020 vs. 2024) 
-
-# Blue Whales
-
-# Convert thee aggregated sightings into time series object
-whale_blue_ts <- ts(whale_blue_agg$total_sightings, 
-                    start = c(min(whale_blue_agg$year), min(whale_blue_agg$month)), 
-                    frequency = 12)
-whale_blue_ts
-
-# Decompose the time series into trend, seasonal, and residual components
-whale_blue_decomp <- decompose(whale_blue_ts)
-
-# Plot decomposition components
-autoplot(whale_blue_decomp) + 
-  ggtitle("Decomposition of Blue Whale Sightings") +
-  theme_minimal()
-
-# Fin Whales 
-
-# Convert the aggregated sightings into time series object
-whale_fin_ts <- ts(whale_fin_agg$total_sightings, 
-                   start = c(min(whale_fin_agg$year), min(whale_fin_agg$month)), 
-                   frequency = 12)
-whale_fin_ts
-
-# Decompose the time series into trend, seasonal, and residual components
-whale_fin_decomp <- decompose(whale_fin_ts)
-
-# Plot decomposition components
-autoplot(whale_fin_decomp) + 
-  ggtitle("Decomposition of Fin Whale Sightings") +
-  theme_minimal()
-
-# Humpback Whales
-
-# Convert the aggregated sightings into time series object
-whale_hump_ts <- ts(whale_hump_agg$total_sightings, 
-                    start = c(min(whale_hump_agg$year), min(whale_hump_agg$month)), 
-                    frequency = 12)
-whale_hump_ts
-
-# Decompose the time series into trend, seasonal, and residual components
-whale_hump_decomp <- decompose(whale_hump_ts)
-
-# Plot the decomposition components
-autoplot(whale_hump_decomp) + 
-  ggtitle("Decomposition of Humpback Whale Sightings") +
-  theme_minimal()
-
-# All Species
-
-# Combine the total sightings
-whale_combined_ts <- ts(whale_combined_agg$total_sightings, 
-                        start = c(min(whale_combined_agg$year), min(whale_combined_agg$month)), 
-                        frequency = 12)
-
-# Decompose the combined time series
-whale_combined_decomp <- decompose(whale_combined_ts)
-
-# Plot the decomposition
-autoplot(whale_combined_decomp) + 
-  ggtitle("Decomposition of All Whale Sightings") +
-  theme_minimal()
-
-## Yearly Time Series Forecasting - Seasonal Naive Method
-
-# Blue Whales
-
-# Forecast using Seasonal Naive Method
-whale_blue_forecast <- snaive(whale_blue_ts, h = 12)  
-# 'h' specifies the number of periods to forecast (12 months)
-
-# Plot the forecast
-autoplot(whale_blue_forecast) + 
-  ggtitle("Seasonal Naive Forecast for Blue Whale Sightings") +
-  xlab("Year") + 
-  ylab("Total Sightings") +
-  theme_minimal()
-
-# Fin Whales
-
-# Forecast using Seasonal Naive Method
-whale_fin_forecast <- snaive(whale_fin_ts, h = 12)  
-# 'h' specifies the number of periods to forecast (12 months)
-
-# Plot the forecast
-autoplot(whale_fin_forecast) + 
-  ggtitle("Seasonal Naive Forecast for Fin Whale Sightings") +
-  xlab("Year") + 
-  ylab("Total Sightings") +
-  theme_minimal()
-
-#  Humpback Whales
-
-# Forecast using Seasonal Naive Method
-whale_hump_forecast <- snaive(whale_hump_ts, h = 12)  
-# 'h' specifies the number of periods to forecast (12 months)
-
-# Plot the forecast
-autoplot(whale_hump_forecast) + 
-  ggtitle("Seasonal Naive Forecast for Humpback Whale Sightings") +
-  xlab("Year") + 
-  ylab("Total Sightings") +
-  theme_minimal()
-
-## Monthly time series forecasting (???)
-
-
 
 
 
