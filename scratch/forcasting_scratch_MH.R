@@ -32,7 +32,7 @@ write.csv(whale_combined_agg, "data/whale_combined_agg.csv", row.names = FALSE)
 -----------------------# saving data-------------
 
 # Make specific forecasting dataframe
-whale_forecast <- whale_cleaned
+whale_forecast <- read_csv("data/whale_cleaned.csv")
 
 # Check structure of date columns
 str(whale_forecast$year)
