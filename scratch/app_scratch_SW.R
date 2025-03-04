@@ -43,7 +43,7 @@ whale_sf <- whale_raw %>%
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
 
-#for map, calling zones file
+# For map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
 
 # Create the user interface (this is the front end side of the Shiny App)
@@ -61,6 +61,9 @@ ui <- fluidPage(
       .navbar-default .navbar-nav > li > a {
         color: white; /* White text on the navbar */
       }
+      #whale_map {
+        height: 600px;  /* Increase map height to 600px */
+      }
     "))
   ),
   
@@ -70,39 +73,46 @@ ui <- fluidPage(
   titlePanel("Whale Alert - Endangered Species Monitoring"), 
   
   tabsetPanel( # Add tabsetPanel for tabs
-    tabPanel("Data Information",  # First tab now
+    tabPanel("Data Information",  
              h3("Project Motivation"),
-             p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California..."), 
+             p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California. 
+               This information can aid in informing vessel speed reduction (VSR) efforts, as well as concerns surrounding entanglement. We hope that our Shiny App might inform 
+               future compliance efforts, as well as provide a useful interface for future citizen scientists. "),
+             h3("Data Summary"), 
+             p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
+             Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
+             The relevant columns for this Shiny App include the X, Y position of the whale observation, 
+               the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time.")
     ),
-    tabPanel("Whale Sightings Trends and Seasonality",  # Second tab (was first)
+    tabPanel("Whale Sightings Trends and Seasonality",  
              sidebarLayout(
                sidebarPanel(
                  radioButtons(
                    inputId = "whale_species", 
                    label = "Choose whale species", 
-                   choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  # Add "All Species" option
+                   choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  
                  ),
                  selectInput(inputId = "time_series",
                              label = "Choose Time Series View",
                              choices = c("Annual", "Monthly")),
-                 h3("Summary Statistics"),  # Place the title here for the table
+                 h3("Summary Statistics"),  
                  tableOutput(outputId = "whale_sum_table"), 
-                  # Display summary table in the sidebar
                ), 
                mainPanel(
                  plotOutput(outputId = "whale_plot"), 
-                 plotOutput(outputId = "whale_plot2"), # Second plot (Total Sightings per Month-Year)
-                 plotOutput(outputId = "whale_season_plot") # New stacked bar chart plot
+                 plotOutput(outputId = "whale_plot2"), 
+                 plotOutput(outputId = "whale_season_plot") 
                )
              )
     ),
     tabPanel("Interactive Map ", 
-             sidebarLayout(
-               sidebarPanel(
-                 p("This section will display a map of different zones.")
+             # Use fluidRow and column to control map space
+             fluidRow(
+               column(6,  # Set the left column to hold content or can be left empty
+                      p("This is an interactive map of whale sightings and zones.") 
                ),
-               mainPanel(
-                 tmapOutput("whale_map")  # Display the map
+               column(6,  # Set the map to occupy the right side
+                      tmapOutput("whale_map", height = "600px")  # Set map height to 600px for larger map
                )
              )
     ), 
@@ -116,10 +126,9 @@ ui <- fluidPage(
                               selected = "All Species"),
                  checkboxInput(inputId = "show_decomposition", 
                                label = "Show Decomposition", 
-                               value = TRUE)  # Checkbox to control visibility of decomposition
+                               value = TRUE)  
                ),
                mainPanel(
-                 # Output for the decomposition plot and forecasts
                  plotOutput("whale_forecast_plot"),
                  plotOutput("whale_decomp_plot")
                )
@@ -151,18 +160,18 @@ server <- function(input, output) {
   # Reactive expression for the filtered whale data based on the selected species
   whale_select <- reactive({
     if (input$whale_species == "All Species") {
-      return(whale_relevant)  # Return all species data
+      return(whale_relevant)  
     } else {
-      return(whale_relevant %>% filter(species == input$whale_species))  # Filter by selected species
+      return(whale_relevant %>% filter(species == input$whale_species))  
     }
   })
   
   # Reactive expression for the filtered whale sightings data based on the selected species
   whale_sightings_select <- reactive({
     if (input$whale_species == "All Species") {
-      return(whale_sightings)  # Return all species data
+      return(whale_sightings)  
     } else {
-      return(whale_sightings %>% filter(species == input$whale_species))  # Filter by selected species
+      return(whale_sightings %>% filter(species == input$whale_species))  
     }
   })
   
@@ -175,17 +184,17 @@ server <- function(input, output) {
         theme_bw() +
         labs(title = paste(input$whale_species, "Annual Sightings (2014-2024)"), 
              x = "Year", 
-             y = "Number of Sightings") +
-        scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  # Show every year on the x-axis
+             y = "Whale Sightings") +
+        scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  
     } else if (input$time_series == "Monthly") {
       # Monthly Time Series Plot
       ggplot(whale_sightings_select(), aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
-        geom_line(color = "steelblue2") +  # Line plot for sightings over time
+        geom_line(color = "steelblue2") +  
         labs(title = paste(input$whale_species, "Monthly Sightings (2014-2024)"),
              x = "Date",
-             y = "Total Sightings") +
+             y = "Whale Sightings") +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels by 45 degrees
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))  
     }
   })
   
@@ -199,23 +208,21 @@ server <- function(input, output) {
         y = "Total Sightings",
         fill = "Species"
       ) +
-      scale_fill_manual(values = c("Humpback Whale" = "steelblue1",  # Blue for Humpback Whale
-                                   "Fin Whale" = "steelblue3",     # Lighter blue for Fin Whale
-                                   "Blue Whale" = "steelblue4")) +  # Even lighter blue for Blue Whale
+      scale_fill_manual(values = c("Humpback Whale" = "steelblue1",  
+                                   "Fin Whale" = "steelblue3",     
+                                   "Blue Whale" = "steelblue4")) +  
       theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  
   })
   
   # Reactive summary table for whale sightings
   whale_sum_table <- reactive({
-    # Filter the data based on the selected species
     data_filtered <- if (input$whale_species == "All Species") {
-      whale_sightings  # If "All Species" is selected, return all species data
+      whale_sightings  
     } else {
-      whale_sightings %>% filter(species == input$whale_species)  # Filter for the selected species
+      whale_sightings %>% filter(species == input$whale_species)  
     }
     
-    # Summarize the filtered data
     data_filtered %>%
       group_by(species, year) %>%
       summarize(total_sighted = sum(total_sighted), .groups = "drop") %>%
@@ -231,17 +238,16 @@ server <- function(input, output) {
   
   # Render tmap
   output$whale_map <- renderTmap({
-    tmap_mode("view")  # Enable interactive mode
+    tmap_mode("view")  
     
-    # Use tm_shape() correctly for defining the spatial data, then apply the relevant layers.
-    tm_shape(zones_sf) +  # The shapefile data (zones_sf)
+    tm_shape(zones_sf) +  
       tm_polygons(
-        col = "lightblue",  # Color for polygons
-        border.col = "darkblue",  # Color for borders
+        col = "lightblue",  
+        border.col = "darkblue",  
         alpha = 0.3
       ) +
-      tm_borders() +  # Add borders for the polygons
-      tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
+      tm_borders() +  
+      tm_basemap(server = "Esri.WorldImagery")  
   })
 }
 
