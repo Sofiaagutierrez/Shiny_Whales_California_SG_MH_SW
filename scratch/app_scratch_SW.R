@@ -83,6 +83,7 @@ ui <- fluidPage(
              Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
              The relevant columns for this Shiny App include the X, Y position of the whale observation, 
                the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time.")
+             
     ),
     tabPanel("Whale Sightings Trends and Seasonality",  
              sidebarLayout(
