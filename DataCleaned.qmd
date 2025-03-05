@@ -11,6 +11,10 @@ editor: visual
 library(readr) #loading/reading data
 library(dplyr) # for %>%
 library(lubridate) #for changing the date column
+library(tidyverse)
+library(tidyr)
+library(sf)
+library(spatstat)
 
 #Loading data
 whale_data <- read.csv("whale_alert.csv", header = TRUE, sep = ",")
@@ -47,24 +51,54 @@ write.csv(whale_cleaned, file = "data/whale_cleaned.csv", row.names = FALSE)
 ## Stella's edit
 ```
 
-View(whale_sf)
-
 ```{r}
-#Sofia's edit on February 27th 
+
+#Sofia's edit on February 27th, changed soem things on March 4th3 3pm (added:whale_expanded)
 
 # Convert whale data to sf
-
-
 whale_raw <- read_csv("data/whale_cleaned.csv")
 
-whale_sf <- whale_raw %>% 
-  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)  
+# Expand rows based on number_sighted
+whale_expanded <- whale_raw %>%
+  uncount(weights = number_sighted)  # Duplicates rows based on the value in number_sighted
 
+# Save to CSV (optional)
+write_csv(whale_expanded, "data/whale_expanded.csv")
+
+# Convert to sf object
+whale_sf <- whale_expanded %>%
+  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
 st_write(whale_sf, "data/whale_sf.shp", delete_dsn = TRUE)
 st_write(whale_sf, "data/whale_gpkg.gpkg", layer = "whale_sightings", delete_layer = TRUE)
 
+# Save as a new shapefile if needed
+st_write(whale_sf, "data/whale_sightings_long.shp", delete_layer = TRUE)
+
+View(whale_expanded)
+
+
+```
+
+```{r}
+
+#####Filtering data for each species (if needed)
+humpback_whales <- whale_expanded %>% filter(species == "Humpback Whale")
+blue_whales <- whale_expanded %>% filter(species == "Blue Whale")
+fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
+
+####create a spatial object with coordinates 
+
+humpback_whales_sf <- st_as_sf(humpback_whales, coords = c("longitude", "latitude"),crs = 4326)
+blue_whales_sf <- st_as_sf(blue_whales, coords = c("longitude", "latitude"), crs = 4326)
+fin_whales_sf <- st_as_sf(fin_whales, coords = c("longitude", "latitude"), crs = 4326)
+
+#Transform to a projected coordinate system 
+
+humpback_whales_sf <- st_transform(humpback_whales_sf, crs = 3395)
+blue_whales_sf <- st_transform(blue_whales_sf, crs = 3395)
+fin_whales_sf <- st_transform(fin_whales_sf, crs = 3395)
 
 
 

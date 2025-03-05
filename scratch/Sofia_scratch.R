@@ -103,6 +103,20 @@ ui <- fluidPage(
                sidebarPanel(
                  p("This section will display a map of different zones.")
                ),
+               # Dropdown for Whale Species Selection
+               selectInput("species", "Select Whale Species:", 
+                           choices = unique(whale_data$species), 
+                           selected = "Humpback Whale"),  
+               # Dropdown for Year Selection
+               selectInput("year", "Select Year:", 
+                                       choices = unique(whale_data$year), 
+                                       selected = max(whale_data$year)),
+               # Dropdown for Month Selection
+               selectInput("month", "Select Month:", 
+                           choices = unique(whale_data$month), 
+                           selected = "January", "Februrary", "March", "April",),  # Default example
+               ),
+             
                mainPanel(
                  tmapOutput("whale_map")  # Display the map
                )

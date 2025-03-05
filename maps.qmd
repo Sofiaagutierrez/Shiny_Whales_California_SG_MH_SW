@@ -10,21 +10,13 @@ library(dplyr)
 library(sf)
 library(stars)
 library(spatstat)
+library(terra)
+library(ggplot2) 
 #worldelevation = read_stars("data/worldelevation.tif")
 #worldvector = read_sf("data/worldvector.gpkg")
 #worldcities = read_sf("data/worldcities.gpkg")
 ```
 
-
-```{r}
-tm_shape(worldelevation) +
-  tm_raster("worldelevation.tif", palette = terrain.colors(8)) +
-tm_shape(worldvector) +
-  tm_borders() +
-tm_shape(worldcities, is.master = TRUE) +
-  tm_dots() +
-  tm_text("name")
-```
 
 
 ```{r}
@@ -42,36 +34,15 @@ tm_shape(worldcities, is.master = TRUE, bbox = c(-130, 25, -110, 50)) +
 
 ```
 
-
-```{r}
-#zones map 
-
-zones_sf <- st_read("data/zones_shapefile.shp")
-
-tmap_mode("view")  # Enable interactive mode
-  tm_shape(zones_sf)+
-    tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
-  
-  print(tm_shape)
-```
-
-
-```{r}
-zones_sf <- st_read("data/zones_shapefile.shp")
-tm_shape(zones_sf)+
-  tm_polygons()+
-    tm_basemap(server = "Esri.WorldImagery")  # Use an Esri basemap
-```
-
 ```{r}
 zones_sf <- st_read("data/zones_shapefile.shp")
 st_geometry_type(zones_sf)
 
 tm_shape(zones_sf) + 
   tm_polygons(
-    col = "lightblue",        # Color of the polygons
-    border.col = "darkblue",   # Color of the borders
-    alpha = 0.3               # Set transparency for the fill (0 = fully transparent, 1 = fully opaque)
+    col = "lightblue",        #Color of the polygons
+    border.col = "darkblue",   #Color of the borders
+    alpha = 0.3               #Set transparency for the fill (0 = fully transparent, 1 = fully opaque)
   ) +
   tm_basemap(server = "Esri.WorldImagery")
 
@@ -79,77 +50,82 @@ tm_shape(zones_sf) +
 ```
 
 ```{r}
-zones_sf_simplified <- st_simplify(zones_sf, dTolerance = 100)  # Simplify geometries
+zones_sf_simplified <- st_simplify(zones_sf, dTolerance = 100)  #Simplify geometries
 tm_shape(zones_sf_simplified) + 
   tm_polygons(col = "lightblue", alpha = 0.3) + 
   tm_basemap(server = "Esri.WorldImagery")
 
 ```
 
-
+##Kernel Density 
 
 ```{r}
 #Kernel Density
-# Create a ppp (point pattern) object
+#Create a ppp (point pattern) object
 whales_ppp <- ppp(x = st_coordinates(humpback_whales_sf)[,1],
                   y = st_coordinates(humpback_whales_sf)[,2],
                   window = owin(c(min(st_coordinates(humpback_whales_sf)[,1]), 
                                   max(st_coordinates(humpback_whales_sf)[,1])), 
                                 c(min(st_coordinates(humpback_whales_sf)[,2]), 
                                   max(st_coordinates(humpback_whales_sf)[,2]))))
-
-# Kernel density estimation
+#Kernel density estimation
 kde <- density.ppp(whales_ppp)
 
-# Plot the density
+#Plot the density
 plot(kde)
 
 ```
 
 
 ```{r}
-library(sf)
-library(spatstat)   # For KDE
-library(terra)      # For handling raster data
-library(ggplot2)    # Optional for visualization
 
-# Convert your data into an sf object
+#Convert your data into an sf object
 humpback_sf <- whale_expanded %>%
   filter(species == "Humpback Whale") %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
-# Ensure the data is projected (KDE works best in projected CRS)
+#Ensure the data is projected (KDE works best in projected CRS)
 humpback_sf <- st_transform(humpback_sf, crs = 32610)  # Replace 32610 with your UTM zone
 
-# Get unique years
+#Get unique years
 years <- unique(humpback_sf$year)
 
-# Loop over years and compute KDE
+#Loop over years and compute KDE
 kde_list <- list()
 
 for (yr in years) {
   # Filter data for the year
   yearly_sf <- humpback_sf[humpback_sf$year == yr, ]
   
-  # Convert to spatstat format (ppp object)
+#Convert to spatstat format (ppp object)
   yearly_ppp <- as.ppp(st_coordinates(yearly_sf), W = owin(xrange = c(min(st_coordinates(yearly_sf)[,1]), 
                                                                       max(st_coordinates(yearly_sf)[,1])), 
                                                            yrange = c(min(st_coordinates(yearly_sf)[,2]), 
                                                                       max(st_coordinates(yearly_sf)[,2]))))
 
-  # Kernel density estimation
+#Kernel density estimation
   kde_result <- density(yearly_ppp, sigma = 50000)  # Adjust bandwidth (sigma) as needed
   
-  # Convert KDE to raster
-  kde_raster <- rast(kde_result)
-  kde_list[[as.character(yr)]] <- kde_raster  # Store each year's KDE
+#Convert KDE to raster
+kde_raster <- rast(kde_result)
+kde_list[[as.character(yr)]] <- kde_raster  # Store each year's KDE
 }
 
-# Plot KDE for each year
-par(mfrow = c(2, 2))  # Arrange plots (adjust based on the number of years)
+#Plot KDE for each year
+par(mfrow = c(3, 4))  # Arrange plots (adjust based on the number of years)
 for (yr in names(kde_list)) {
   plot(kde_list[[yr]], main = paste("KDE for", yr))
 }
 
 ```
+
+```{r}
+#Filtering data by year and month
+humpback_whales_sf <- st_transform(humpback_whales_sf, crs = 3395)
+
+
+
+```
+
+
 
