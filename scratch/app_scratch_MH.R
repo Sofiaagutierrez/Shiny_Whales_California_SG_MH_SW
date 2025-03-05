@@ -13,6 +13,9 @@ library(forecast)
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
 
+# Read in the Whale Forecast CSV
+whale_forecast <- read_csv("data/whale_cleaned.csv")
+
 # Create a 'season' column
 whale_mutate <- whale_raw %>%
   mutate(season = case_when(
@@ -88,21 +91,16 @@ ui <- fluidPage(
     tabPanel("Whale Sightings Trends and Seasonality",  
              sidebarLayout(
                sidebarPanel(
-                 radioButtons(
-                   inputId = "whale_species", 
-                   label = "Choose whale species", 
-                   choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  
-                 ),
-                 selectInput(inputId = "time_series",
-                             label = "Choose Time Series View",
-                             choices = c("Annual", "Monthly")),
-                 h3("Summary Statistics"),  
-                 tableOutput(outputId = "whale_sum_table"), 
-               ), 
+                 selectInput("species", 
+                             "Select Whale Species:",
+                             choices = c("Blue Whale", "Fin Whale", "Humpback Whale", "All Whales"),
+                             selected = "Blue Whale"),
+                 sliderInput("forecast_period", 
+                             "Forecast Period (months):", 
+                             min = 6, max = 36, value = 12, step = 6)
+               ),
                mainPanel(
-                 plotOutput(outputId = "whale_plot"), 
-                 plotOutput(outputId = "whale_plot2"), 
-                 plotOutput(outputId = "whale_season_plot") 
+                 plotOutput("whalePlot")
                )
              )
     ),
@@ -250,49 +248,38 @@ server <- function(input, output) {
       tm_borders() +  
       tm_basemap(server = "Esri.WorldImagery")  
   })
-  # For species selection, filter the data
-  filtered_whale_data <- reactive({
-    if (input$forecast_species == "Blue Whale") {
-      return(whale_blue_agg)
-    } else if (input$forecast_species == "Fin Whale") {
-      return(whale_fin_agg)
-    } else if (input$forecast_species == "Humpback Whale") {
-      return(whale_hump_agg)
+  
+  #Forecast plots
+  forecast_data <- reactive({
+    species_selected <- input$species
+    forecast_period <- input$forecast_period
+    
+    # Prepare time series for different species
+    if (species_selected == "Blue Whale") {
+      whale_ts <- whale_blue_ts
+    } else if (species_selected == "Fin Whale") {
+      whale_ts <- whale_fin_ts
+    } else if (species_selected == "Humpback Whale") {
+      whale_ts <- whale_hump_ts
     } else {
-      return(whale_combined_agg)  # For "All Species"
+      whale_ts <- whale_combined_ts
     }
+    
+    # Forecast using Seasonal Naive Method
+    whale_forecast <- snaive(whale_ts, h = forecast_period)
+    
+    # Return the forecast object
+    return(whale_forecast)
   })
   
-  # The time series and perform decomposition for the selected species
-  output$whale_decomp_plot <- renderPlot({
-    whale_data <- filtered_whale_data()
-    
-    # Convert to time series object
-    whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
-    whale_decomp <- decompose(whale_ts)
-    
-    if (input$show_decomposition) {
-      autoplot(whale_decomp) + 
-        ggtitle(paste("Decomposition of", input$forecast_species, "Sightings")) +
-        theme_minimal()
-    } else {
-      NULL  # Don't show the decomposition plot if unchecked
-    }
-  })
-  
-  # Forecasting (Seasonal Naive Method) for the selected species
-  output$whale_forecast_plot <- renderPlot({
-    whale_data <- filtered_whale_data()
-    
-    # Convert to time series object
-    whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
-    whale_forecast <- snaive(whale_ts, h = 36)  # Forecast 3 years ahead
-    
-    autoplot(whale_forecast) + 
-      ggtitle(paste("Seasonal Naive Forecast for", input$forecast_species, "Sightings")) +
-      theme_minimal() +
+  # Output the forecast plot
+  output$whalePlot <- renderPlot({
+    forecast_data() %>%
+      autoplot() + 
+      ggtitle(paste("Seasonal Naive Forecast for", input$species, "Sightings")) +
       xlab("Year") + 
-      ylab("Total Sightings")
+      ylab("Total Sightings") +
+      theme_minimal()
   })
 }
 
