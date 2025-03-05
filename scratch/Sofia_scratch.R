@@ -13,6 +13,10 @@ library(forecast)
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
 
+# Expand rows based on number_sighted (for map)
+whale_expanded <- whale_raw %>%
+  uncount(weights = number_sighted)  # Duplicates rows based on the value in number_sighted
+
 # Create a 'season' column
 whale_mutate <- whale_raw %>%
   mutate(season = case_when(
@@ -39,9 +43,9 @@ whale_relevant <- whale_raw %>%
   summarize(Total_Value = sum(number_sighted), .groups = "drop")
 
 # For map, converting data into sf
-whale_sf <- whale_raw %>% 
+whale_sf <- whale_expanded %>%
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
 #for map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
@@ -97,31 +101,32 @@ ui <- fluidPage(
              )
     ), 
     
-    # Tab for Zones Map
-    tabPanel("Interactive Map ", 
+    tabPanel("Interactive Map", 
              sidebarLayout(
                sidebarPanel(
-                 p("This section will display a map of different zones.")
-               ),
-               # Dropdown for Whale Species Selection
-               selectInput("species", "Select Whale Species:", 
-                           choices = unique(whale_data$species), 
-                           selected = "Humpback Whale"),  
-               # Dropdown for Year Selection
-               selectInput("year", "Select Year:", 
-                                       choices = unique(whale_data$year), 
-                                       selected = max(whale_data$year)),
-               # Dropdown for Month Selection
-               selectInput("month", "Select Month:", 
-                           choices = unique(whale_data$month), 
-                           selected = "January", "Februrary", "March", "April",),  # Default example
-               ),
-             
+                 p("This section will display a map of different zones."),
+                 
+                 # Dropdown for Whale Species Selection
+                 selectInput("species", "Select Whale Species:", 
+                             choices = c("", unique(whale_sf$species)), 
+                             selected = NULL),  
+                 
+                 # Dropdown for Year Selection
+                 selectInput("year","Select Year:", 
+                             choices = c("", sort(unique(whale_sf$year))), 
+                             selected = NULL),  
+                 
+                 # Dropdown for Month Selection
+                 selectInput("month", "Select Month:", 
+                             choices = c("", month.name), 
+                             selected = NULL)  
+               ),  
+               
                mainPanel(
                  tmapOutput("whale_map")  # Display the map
                )
              )
-    ), 
+    ),
     
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
              sidebarLayout(
@@ -157,9 +162,10 @@ ui <- fluidPage(
                target = "_blank"), 
              h3("Contact Information"),
              p("*Here have the contact info for relevant people*")
-    )
+    ) 
   )
 )
+
 
 # Create the server function 
 server <- function(input, output) {
@@ -243,13 +249,24 @@ server <- function(input, output) {
   output$whale_sum_table <- renderTable({
     whale_sum_table()
   })
+ 
   
+ #Reactive expression for whale map  
+  filtered_whale_sf <- reactive({
+    whale_sf %>%
+      filter(
+        (input$species == "" | species = input$species), 
+        (inputyear == "" | year == as.numeric(input$year)), 
+        (inputmonth == "" | month == input$month) 
+      )
+  })
   
   # Render tmap
   output$whale_map <- renderTmap({
-    tmap_mode("view")  # Enable interactive mode
+    req(nrow(filtered_whale_sf()) > 0) #prevents erros if no data is selected
     
-    # Use tm_shape() correctly for defining the spatial data, then apply the relevant layers.
+    tmap_mode("view")  
+    
     tm_shape(zones_sf) +  # The shapefile data (zones_sf)
       tm_polygons(
         col = "lightblue",  # Color for polygons
@@ -258,8 +275,11 @@ server <- function(input, output) {
       ) +
       tm_borders() +  # Add borders for the polygons
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
+      tm_shape(filtered_whale_sf()) +
+      tm_dots(col = "pink", size = 0.5)    
   })
 }
+
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)

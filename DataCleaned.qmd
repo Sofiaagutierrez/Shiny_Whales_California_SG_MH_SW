@@ -89,13 +89,11 @@ blue_whales <- whale_expanded %>% filter(species == "Blue Whale")
 fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
 
 ####create a spatial object with coordinates 
-
 humpback_whales_sf <- st_as_sf(humpback_whales, coords = c("longitude", "latitude"),crs = 4326)
 blue_whales_sf <- st_as_sf(blue_whales, coords = c("longitude", "latitude"), crs = 4326)
 fin_whales_sf <- st_as_sf(fin_whales, coords = c("longitude", "latitude"), crs = 4326)
 
 #Transform to a projected coordinate system 
-
 humpback_whales_sf <- st_transform(humpback_whales_sf, crs = 3395)
 blue_whales_sf <- st_transform(blue_whales_sf, crs = 3395)
 fin_whales_sf <- st_transform(fin_whales_sf, crs = 3395)
