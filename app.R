@@ -13,6 +13,9 @@ library(forecast)
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
 
+# Read in the Whale Forecast CSV
+whale_forecast <- read_csv("data/whale_cleaned.csv")
+
 # Create a 'season' column
 whale_mutate <- whale_raw %>%
   mutate(season = case_when(
