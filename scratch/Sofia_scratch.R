@@ -108,7 +108,7 @@ ui <- fluidPage(
                  
                  # Dropdown for Whale Species Selection
                  selectInput("species", "Select Whale Species:", 
-                             choices = c("", unique(whale_sf$species)), 
+                             choices = c("Select Species" = "", unique(whale_sf$species)), 
                              selected = NULL),  
                  
                  # Dropdown for Year Selection
@@ -118,7 +118,7 @@ ui <- fluidPage(
                  
                  # Dropdown for Month Selection
                  selectInput("month", "Select Month:", 
-                             choices = c("", month.name), 
+                             choices = c("Select Month" = "", month.name), 
                              selected = NULL)  
                ),  
                
@@ -253,18 +253,23 @@ server <- function(input, output) {
   
  #Reactive expression for whale map  
   filtered_whale_sf <- reactive({
-    whale_sf %>%
+    req(input$species, input$year, input$month)
+    filtered_data <-  whale_sf %>%
       filter(
         (input$species == "" | species = input$species), 
-        (inputyear == "" | year == as.numeric(input$year)), 
-        (inputmonth == "" | month == input$month) 
+        (input$year == "" | year == as.numeric(input$year)), 
+        (input$month == "" | month == input$month) 
       )
+    return(filtered_data)
   })
   
   # Render tmap
   output$whale_map <- renderTmap({
-    req(nrow(filtered_whale_sf()) > 0) #prevents erros if no data is selected
-    
+    data <- filtered_whale_sf()
+    if (nrow(data) == 0) {
+      showNotification("No data available for the selected filters.", type = "warning")
+      return(NULL)  # Prevents error when data is empty
+    }
     tmap_mode("view")  
     
     tm_shape(zones_sf) +  # The shapefile data (zones_sf)
@@ -275,7 +280,7 @@ server <- function(input, output) {
       ) +
       tm_borders() +  # Add borders for the polygons
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
-      tm_shape(filtered_whale_sf()) +
+      tm_shape(data) +
       tm_dots(col = "pink", size = 0.5)    
   })
 }
