@@ -279,9 +279,14 @@ server <- function(input, output) {
         alpha = 0.3
       ) +
       tm_borders() +  # Add borders for the polygons
+      tm_shape(filtered_whale_sf()) +
+      tm_dots(col = "pink",
+              size = 0.5, 
+              alpha = 0.8,   # Adjust transparency for visibility
+              shape = 21,    # Use a circle with fill
+              border.col = "black",  # Ensure there's an outline
+              border.lwd = 0.5) +
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
-      tm_shape(data) +
-      tm_dots(col = "pink", size = 0.5)    
   })
 }
 
