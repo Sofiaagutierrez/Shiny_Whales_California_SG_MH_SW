@@ -57,6 +57,28 @@ tm_shape(zones_sf_simplified) +
 
 ```
 
+#MAP
+```{r}
+
+   tmap_mode("view")  
+    
+    tm_shape(zones_sf) +  # The shapefile data (zones_sf)
+      tm_polygons(
+        col = "lightblue",  # Color for polygons
+        border.col = "darkblue",  # Color for borders
+        alpha = 0.3
+      ) +
+      tm_borders() +  # Add borders for the polygons
+      tm_shape(whale_sf) +
+      tm_dots(col = "pink",
+              size = 0.5, 
+              alpha = 0.8,   # Adjust transparency for visibility
+              shape = 21,    # Use a circle with fill
+              border.col = "black",  # Ensure there's an outline
+              border.lwd = 0.5) +
+      tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
+```
+
 ##Kernel Density 
 
 ```{r}
@@ -76,6 +98,7 @@ plot(kde)
 
 ```
 
+#Humpback Whale
 
 ```{r}
 
@@ -112,20 +135,97 @@ kde_list[[as.character(yr)]] <- kde_raster  # Store each year's KDE
 }
 
 #Plot KDE for each year
-par(mfrow = c(3, 4))  # Arrange plots (adjust based on the number of years)
+par(mfrow = c(4, 4))  # Arrange plots (adjust based on the number of years)
 for (yr in names(kde_list)) {
   plot(kde_list[[yr]], main = paste("KDE for", yr))
 }
 
 ```
 
+#Blue Whale
 ```{r}
-#Filtering data by year and month
-humpback_whales_sf <- st_transform(humpback_whales_sf, crs = 3395)
+
+#Convert your data into an sf object
+blue_sf <- whale_expanded %>%
+  filter(species == "Blue Whale") %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
+#Ensure the data is projected (KDE works best in projected CRS)
+blue_sf <- st_transform(blue_sf, crs = 32610)  # Replace 32610 with your UTM zone
+
+#Get unique years
+years <- unique(blue_sf$year)
+
+#Loop over years and compute KDE
+kde_list <- list()
+
+for (yr in years) {
+  # Filter data for the year
+  yearly_sf <- blue_sf[blue_sf$year == yr, ]
+  
+#Convert to spatstat format (ppp object)
+  yearly_ppp <- as.ppp(st_coordinates(yearly_sf), W = owin(xrange = c(min(st_coordinates(yearly_sf)[,1]), 
+                                                                      max(st_coordinates(yearly_sf)[,1])), 
+                                                           yrange = c(min(st_coordinates(yearly_sf)[,2]), 
+                                                                      max(st_coordinates(yearly_sf)[,2]))))
+
+#Kernel density estimation
+  kde_result <- density(yearly_ppp, sigma = 50000)  # Adjust bandwidth (sigma) as needed
+  
+#Convert KDE to raster
+kde_raster <- rast(kde_result)
+kde_list[[as.character(yr)]] <- kde_raster  # Store each year's KDE
+}
+
+#Plot KDE for each year
+par(mfrow = c(4, 4))  # Arrange plots (adjust based on the number of years)
+for (yr in names(kde_list)) {
+  plot(kde_list[[yr]], main = paste("KDE for", yr))
+}
 
 
 
 ```
 
+#Fin whale
+```{r}
 
+#Convert your data into an sf object
+fin_sf <- whale_expanded %>%
+  filter(species == "Fin Whale") %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
+#Ensure the data is projected (KDE works best in projected CRS)
+fin_sf <- st_transform(fin_sf, crs = 32610)  # Replace 32610 with your UTM zone
+
+#Get unique years
+years <- unique(fin_sf$year)
+
+#Loop over years and compute KDE
+kde_list <- list()
+
+for (yr in years) {
+  # Filter data for the year
+  yearly_sf <- fin_sf[fin_sf$year == yr, ]
+  
+#Convert to spatstat format (ppp object)
+  yearly_ppp <- as.ppp(st_coordinates(yearly_sf), W = owin(xrange = c(min(st_coordinates(yearly_sf)[,1]), 
+                                                                      max(st_coordinates(yearly_sf)[,1])), 
+                                                           yrange = c(min(st_coordinates(yearly_sf)[,2]), 
+                                                                      max(st_coordinates(yearly_sf)[,2]))))
+
+#Kernel density estimation
+  kde_result <- density(yearly_ppp, sigma = 50000)  # Adjust bandwidth (sigma) as needed
+  
+#Convert KDE to raster
+kde_raster <- rast(kde_result)
+kde_list[[as.character(yr)]] <- kde_raster  # Store each year's KDE
+}
+
+#Plot KDE for each year
+par(mfrow = c(3, 4))  # Arrange plots (adjust based on the number of years)
+for (yr in names(kde_list)) {
+  plot(kde_list[[yr]], main = paste("KDE for", yr))
+}
+```
 
