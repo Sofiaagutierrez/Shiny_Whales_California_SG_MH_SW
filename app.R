@@ -193,7 +193,6 @@ ui <- navbarPage(
                The relevant columns for this Shiny App include the X, Y position of the whale observation, 
                  the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
                # The image with proper styling
-               tags$img(src = "www/noaa_logo.png", height = "50px", style = "margin-right: 10px;")
              )
     ),
     tabPanel("Whale Sightings Trends and Seasonality",  
