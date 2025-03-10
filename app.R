@@ -10,6 +10,7 @@ library(readr)
 library(tsibble)
 library(sf)
 library(forecast)
+library(bslib)
 
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
@@ -146,43 +147,54 @@ whale_hump_decomp <- decompose(whale_hump_ts)
 zones_sf <- st_read("data/zones_shapefile.shp")
 
 # Create the user interface (this is the front end side of the Shiny App)
-ui <- fluidPage(
+ui <- navbarPage(
+  title = div(style = "color: white; font-weight: bold; font-size: 40px", "Whale Alert - Endangered Species Monitoring"), 
+  theme = bslib::bs_theme(bootswatch = "flatly", primary = "#1874CD"),  # Apply the custom theme
   
   # Add custom CSS for background color and other styling
   tags$head(
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap"),
     tags$style(HTML("
-      body {
-        background-color: #e0f7fa; /* Light blue background */
-      }
-      .navbar-default {
-        background-color: #0277bd; /* Blue bar for the navbar */
-      }
-      .navbar-default .navbar-nav > li > a {
-        color: white; /* White text on the navbar */
-      }
-      #whale_map {
-        height: 600px;  /* Increase map height to 600px */
-      }
-    "))
+    body {
+      font-family: 'Playfair Display', serif;  /* Apply Playfair Display font globally */
+      background-color: #C6E2FF;  /* Set the background color to light blue */
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Playfair Display', serif;  /* Apply Playfair Display to headings */
+    }
+    p {
+      font-family: 'Playfair Display', serif;  /* Apply Playfair Display to paragraphs */
+    }
+    .navbar-nav .nav-item {
+      color: #1874CD !important; /* Set the navbar tab text color to the same blue as the title bar */
+    }
+    .navbar-nav .nav-item a {
+      color: #1874CD !important;  /* Make sure links within the tabs have the same color */
+    }
+    .tab-content {
+      padding-top: 60px; /* Add space between the title bar and the content */
+    }
+  "))
   ),
   
-  # Apply the cerulean theme using shinythemes
-  theme = shinytheme("cerulean"),
-  
-  titlePanel("Whale Alert - Endangered Species Monitoring"), 
-  
-  tabsetPanel( # Add tabsetPanel for tabs
+  # Apply the navbarPage structure for navigation
+  tabsetPanel(  # Add tabsetPanel for tabs
     tabPanel("Data Information",  
-             h3("Project Motivation"),
-             p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California. 
-               This information can aid in informing vessel speed reduction (VSR) efforts, as well as concerns surrounding entanglement. We hope that our Shiny App might inform 
-               future compliance efforts, as well as provide a useful interface for future citizen scientists. "),
-             h3("Data Summary"), 
-             p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
-             Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
-             The relevant columns for this Shiny App include the X, Y position of the whale observation, 
-               the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time.")
-             
+             # Center the entire content using div and CSS
+             tags$div(
+               style = "display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;",
+               h3("Project Motivation"),
+               p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California. 
+                 This information can aid in informing vessel speed reduction (VSR) efforts, as well as concerns surrounding entanglement. We hope that our Shiny App might inform 
+                 future compliance efforts, as well as provide a useful interface for future citizen scientists."),
+               h3("Data Summary"), 
+               p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
+               Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
+               The relevant columns for this Shiny App include the X, Y position of the whale observation, 
+                 the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
+               # The image with proper styling
+               tags$img(src = "www/noaa_logo.png", height = "50px", style = "margin-right: 10px;")
+             )
     ),
     tabPanel("Whale Sightings Trends and Seasonality",  
              sidebarLayout(
@@ -254,6 +266,7 @@ ui <- fluidPage(
   )
 )
 
+
 # Create the server function 
 server <- function(input, output) {
   
@@ -280,7 +293,7 @@ server <- function(input, output) {
     if (input$time_series == "Annual") {
       # Annual Time Series Plot
       ggplot(whale_select(), aes(x = year, y = Total_Value, color = species)) + 
-        geom_line() + scale_color_manual(values = c("Humpback Whale" = "blue", "Fin Whale" = "red", "Blue Whale" = "black")) +  # QUESTION HERE 
+        geom_line() + scale_color_manual(values = c("Humpback Whale" = "steelblue1", "Fin Whale" = "steelblue3", "Blue Whale" = "steelblue4")) +  # QUESTION HERE 
         theme_bw() +
         labs(title = paste(input$whale_species, "Annual Sightings (2014-2024)"), 
              x = "Year", 
@@ -289,12 +302,13 @@ server <- function(input, output) {
     } else if (input$time_series == "Monthly") {
       # Monthly Time Series Plot
       ggplot(whale_sightings_select(), aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
-        geom_line(color = "steelblue2") +   # QUESTION HERE - would the color for all three specesi be something here in server or in the ui
+        geom_line() + scale_color_manual(values = c("Humpback Whale" = "steelblue1", "Fin Whale" = "steelblue3", "Blue Whale" = "steelblue4")) + 
         labs(title = paste(input$whale_species, "Monthly Sightings (2014-2024)"),
              x = "Date",
              y = "Whale Sightings") +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+        scale_x_discrete(
+          breaks = function(x) x[seq(1, length(x), by = 12)]) 
     }
   })
   
@@ -395,5 +409,5 @@ server <- function(input, output) {
   })
 }
 
-# Run the Shiny app
+# Run the application 
 shinyApp(ui = ui, server = server)
