@@ -146,10 +146,14 @@ whale_hump_decomp <- decompose(whale_hump_ts)
 # For map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
 
+
+
 # Create the user interface (this is the front end side of the Shiny App)
 ui <- navbarPage(
-  title = div(style = "color: white; font-weight: bold; font-size: 40px", "Whale Alert - Endangered Species Monitoring"), 
-  theme = bslib::bs_theme(bootswatch = "flatly", primary = "#1874CD"),  # Apply the custom theme
+  title = div(style = "color: white; font-weight: bold; font-size: 50px", "Whale Alert - Endangered Species Monitoring", 
+              tags$img(src = "noaa_logo.png", height = "100px", style = "margin-left: 50px;")), 
+  theme = bslib::bs_theme(bootswatch = "flatly", primary = "#1874CD"), 
+
   
   # Add custom CSS for background color and other styling
   tags$head(
@@ -178,8 +182,8 @@ ui <- navbarPage(
   ),
   
   # Apply the navbarPage structure for navigation
-  tabsetPanel(  # Add tabsetPanel for tabs
-    tabPanel("Data Information",  
+  tabsetPanel(  # Add tabsetPanel for tabs 
+    tabPanel("Data Information", 
              # Center the entire content using div and CSS
              tags$div(
                style = "display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;",
@@ -192,10 +196,8 @@ ui <- navbarPage(
                Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
                The relevant columns for this Shiny App include the X, Y position of the whale observation, 
                  the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
-               # The image with proper styling
-               tags$img(src = "noaa_logo.png", height = "400px") ## IMAGE ISSUE HERE 
+               tags$img(src = "humpback.jpg", height = "400px", width = "800px")
              )
-             
     ),
     tabPanel("Whale Sightings Trends and Seasonality",  
              sidebarLayout(
