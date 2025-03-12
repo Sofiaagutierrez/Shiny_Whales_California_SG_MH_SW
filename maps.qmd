@@ -17,7 +17,6 @@ library(ggplot2)
 #worldcities = read_sf("data/worldcities.gpkg")
 ```
 
-
 ```{r}
 #California Coast
 
@@ -56,7 +55,8 @@ tm_shape(zones_sf_simplified) +
 
 ```
 
-#MAP
+# MAP
+
 ```{r}
 
    tmap_mode("view")  
@@ -78,7 +78,7 @@ tm_shape(zones_sf_simplified) +
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
 ```
 
-##Kernel Density 
+##Kernel Density
 
 ```{r}
 #Kernel Density
@@ -142,6 +142,7 @@ for (yr in names(kde_list)) {
 ```
 
 #Blue Whale
+
 ```{r}
 
 #Convert your data into an sf object
@@ -187,6 +188,7 @@ for (yr in names(kde_list)) {
 ```
 
 #Fin whale
+
 ```{r}
 
 #Convert your data into an sf object
@@ -228,18 +230,86 @@ for (yr in names(kde_list)) {
 }
 ```
 
-#Calculating homerange 
+# Home Ranges 
 
 ```{r}
-remotes::install_github("cran/adehabitat")
+library(adehabitatHR)
+
+#Load data 
+whale_raw <- read_csv("data/whale_cleaned.csv")
+
+# Expand rows based on number_sighted
+whale_expanded <- whale_raw %>%
+  uncount(weights = number_sighted)  # Duplicates rows based on the value in number_sighted
+
+#Filtering data for each species (if needed)
+humpback_whales <- whale_expanded %>% filter(species == "Humpback Whale")
+blue_whales <- whale_expanded %>% filter(species == "Blue Whale")
+fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
 
 
+#Create a projection, Create SPDF and Check CRS
+#CRS projection, variable prj
+prj <- "+init=epsg:4326"
+
+
+
+#Creating a SpatialPointsDataFrame
+
+whale_exp <- SpatialPointsDataFrame(coords = coordinates(cbind(whale_expanded$longitude,
+                    whale_expanded$latitude)),  
+                    data = whale_expanded,  
+                    proj4string = CRS(prj))
+
+humpback_w <- SpatialPointsDataFrame(coords = coordinates(cbind(humpback_whales$longitude,
+                    humpback_whales$latitude)),  
+                    data = humpback_whales,  
+                    proj4string = CRS(prj))
+                                                          
+blue_w <- SpatialPointsDataFrame(coords = coordinates(cbind(blue_whales$longitude,
+                    blue_whales$latitude)),  
+                    data = blue_whales,  
+                    proj4string = CRS(prj))
+
+fin_w <- SpatialPointsDataFrame(coords = coordinates(cbind(fin_whales$longitude,
+                    fin_whales$latitude)),  
+                    data = fin_whales,  
+                    proj4string = CRS(prj))
+
+
+#quick visualization 
+plot(whale_exp, pch= 19, cex = 0.5) 
+plot(humpback_w, pch= 19, cex = 0.5)
+plot(blue_w, pch= 19, cex = 0.5)
+plot(fin_w, pch= 19, cex = 0.5)
+
+
+#kernel density 
+kernel_whales <- kernelUD(xy = whale_exp,
+                           h = "href")
+kernel_humpack <- kernelUD(xy = humpback_w,
+                           h = "href")
+kernel_blue <- kernelUD(xy = blue_w,
+                           h = "href")
+kernel_fin <- kernelUD(xy = fin_w,
+                           h = "href")
+
+#quick visualization 
+
+image(kernel_whales)
+image(kernel_humpack)
+image(kernel_blue)
+image(kernel_fin)
 
 ```
 
-
 ```{r}
-unlink("/Users/macbook/Library/R/x86_64/4.4/library/00LOCK-adehabitat", recursive = TRUE)
+#extracting 75% and 90%,see in literature which % could be best 
 
+hr_90_humpback <- getverticeshr(x = kernel_humpack, percent = 90) 
+hr_75_humpback <- getverticeshr(x = kernel_humpack, percent = 75)
+
+#checking classes 
+(hr_90_humpback)
+(hr_75_humpback)
 ```
-

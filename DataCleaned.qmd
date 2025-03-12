@@ -21,8 +21,15 @@ whale_data <- read.csv("whale_alert.csv", header = TRUE, sep = ",")
 #View(whale_data)
 
 #cleaning off columns
-whale_cleaned <- whale_data %>% select(-c(project_id, trip_id, bearing, photos, photos_taken, whale_alert_submitter_name, whale_alert_submitter_email, whale_alert_submitter_phone, comments, animal_status, Id, X.1, X.2,X.3, X.4, X.5, X.6, X.7, X, Y))
-#View(whale_cleaned)
+
+columns_to_remove <- c("project_id", "trip_id", "bearing", "photos", "photos_taken", 
+                       "whale_alert_submitter_name", "whale_alert_submitter_email", 
+                       "whale_alert_submitter_phone", "comments", "animal_status", 
+                       "Id", "X.1", "X.2", "X.3", "X.4", "X.5", "X.6", "X.7", "X", "Y")
+
+whale_cleaned <- whale_data %>% dplyr::select(-any_of(columns_to_remove))
+
+View(whale_cleaned)
 
 #Separating data column
 whale_cleaned <- whale_cleaned %>%

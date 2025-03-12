@@ -50,6 +50,7 @@ whale_sf <- whale_expanded %>%
 #for map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
 
+
 # Create the user interface (this is the front end side of the Shiny App)
 ui <- fluidPage(
   
@@ -101,32 +102,36 @@ ui <- fluidPage(
              )
     ), 
     
-    tabPanel("Interactive Map", 
+    tabPanel("Interactive Map",
              sidebarLayout(
                sidebarPanel(
                  p("This section will display a map of different zones."),
                  
-                 # Dropdown for Whale Species Selection
-                 selectInput("species", "Select Whale Species:", 
-                             choices = c("Select Species" = "", unique(whale_sf$species)), 
-                             selected = NULL),  
+                 # Dropdown for Whale Species Selection, including "All Species"
+                 selectInput("species", "Select Whale Species:",
+                             choices = c("All Species", unique(whale_sf$species)),
+                             selected = "All Species"
+                 ),
                  
-                 # Dropdown for Year Selection
-                 selectInput("year","Select Year:", 
-                             choices = c("", sort(unique(whale_sf$year))), 
-                             selected = NULL),  
+                 # Dropdown for Year Selection, including "All Years"
+                 selectInput("year", "Select Year:",
+                             choices = c("All Years", sort(unique(whale_sf$year))),
+                             selected = "All Years"
+                 ),
                  
-                 # Dropdown for Month Selection
-                 selectInput("month", "Select Month:", 
-                             choices = c("Select Month" = "", month.name), 
-                             selected = NULL)  
-               ),  
+                 # Dropdown for Month Selection, including "All Months"
+                 selectInput("month", "Select Month:",
+                             choices = c("All Months", month.name),
+                             selected = "All Months"
+                 )
+               ),
                
                mainPanel(
                  tmapOutput("whale_map")  # Display the map
                )
              )
-    ),
+    ), 
+    
     
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
              sidebarLayout(
@@ -271,13 +276,12 @@ server <- function(input, output) {
     print(paste("Year input (numeric):", year_input))   # Check the numeric conversion
     
     
-    
     filtered_data <-  whale_sf %>%
       mutate(month = trimws(month)) %>% 
       filter(
-        (input$species == "" | species == input$species), 
-        (input$year == "" | year == year_input), 
-        (input$month == "" | month == input_month_abbr)  
+        (input$species == "All Species" | species == input$species), 
+        (input$year == "All Years" | year == year_input), 
+        (input$month == "All Months" | month == input_month_abbr)  
       )
     
     print(paste("Filtered data row count:", nrow(filtered_data)))  # Check filtered data row count
@@ -285,7 +289,8 @@ server <- function(input, output) {
     return(filtered_data)
   })
   
-  # Ensure tmap is in view mode
+  
+  #Ensure tmap is in view mode
   observe({
     tmap_mode("view")
   })
@@ -308,15 +313,17 @@ server <- function(input, output) {
       tm_borders() +  # Add borders for the polygons
       tm_shape(data) +
       tm_dots(
-              col = "pink",
-              size = 0.5, 
-              alpha = 0.8,   # Adjust transparency for visibility
-              shape = 21,    # Use a circle with fill
-              border.col = "black",  # Ensure there's an outline
-              border.lwd = 0.5) +
+        col = "pink",
+        size = 0.5, 
+        alpha = 0.8,   # Adjust transparency for visibility
+        shape = 21,    # Use a circle with fill
+        border.col = "black",  # Ensure there's an outline
+        border.lwd = 0.5) +
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
   })
 }
+
+
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)
