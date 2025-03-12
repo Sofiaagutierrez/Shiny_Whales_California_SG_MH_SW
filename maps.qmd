@@ -18,7 +18,6 @@ library(ggplot2)
 ```
 
 
-
 ```{r}
 #California Coast
 
@@ -227,5 +226,20 @@ par(mfrow = c(3, 4))  # Arrange plots (adjust based on the number of years)
 for (yr in names(kde_list)) {
   plot(kde_list[[yr]], main = paste("KDE for", yr))
 }
+```
+
+#Calculating homerange 
+
+```{r}
+remotes::install_github("cran/adehabitat")
+
+
+
+```
+
+
+```{r}
+unlink("/Users/macbook/Library/R/x86_64/4.4/library/00LOCK-adehabitat", recursive = TRUE)
+
 ```
 

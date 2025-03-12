@@ -254,23 +254,50 @@ server <- function(input, output) {
  #Reactive expression for whale map  
   filtered_whale_sf <- reactive({
     req(input$species, input$year, input$month)
+    
+    
+    print("Reactive function triggered")  
+    
+    # Convert full month name (e.g., "February") to 3-letter format (e.g., "Feb")
+    input_month_abbr <- format(as.Date(paste0("1 ", input$month), "%d %B"), "%b")
+    
+    # Debug prints
+    print(paste("Converted Month:", input_month_abbr))
+    print(paste("Year Input:", input$year))
+    print(paste("Species selected:", input$species))
+    
+    # Convert year to numeric if it's not already
+    year_input <- as.numeric(input$year)
+    print(paste("Year input (numeric):", year_input))   # Check the numeric conversion
+    
+    
+    
     filtered_data <-  whale_sf %>%
+      mutate(month = trimws(month)) %>% 
       filter(
-        (input$species == "" | species = input$species), 
-        (input$year == "" | year == as.numeric(input$year)), 
-        (input$month == "" | month == input$month) 
+        (input$species == "" | species == input$species), 
+        (input$year == "" | year == year_input), 
+        (input$month == "" | month == input_month_abbr)  
       )
+    
+    print(paste("Filtered data row count:", nrow(filtered_data)))  # Check filtered data row count
+    print(head(filtered_data))  # Preview filtered data
     return(filtered_data)
+  })
+  
+  # Ensure tmap is in view mode
+  observe({
+    tmap_mode("view")
   })
   
   # Render tmap
   output$whale_map <- renderTmap({
     data <- filtered_whale_sf()
+    
     if (nrow(data) == 0) {
       showNotification("No data available for the selected filters.", type = "warning")
       return(NULL)  # Prevents error when data is empty
     }
-    tmap_mode("view")  
     
     tm_shape(zones_sf) +  # The shapefile data (zones_sf)
       tm_polygons(
@@ -279,8 +306,9 @@ server <- function(input, output) {
         alpha = 0.3
       ) +
       tm_borders() +  # Add borders for the polygons
-      tm_shape(filtered_whale_sf()) +
-      tm_dots(col = "pink",
+      tm_shape(data) +
+      tm_dots(
+              col = "pink",
               size = 0.5, 
               alpha = 0.8,   # Adjust transparency for visibility
               shape = 21,    # Use a circle with fill
@@ -289,7 +317,6 @@ server <- function(input, output) {
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
   })
 }
-
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)
