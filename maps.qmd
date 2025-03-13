@@ -23,6 +23,7 @@ worldcities = read_sf("data/worldcities.gpkg")
 
 ```{r}
 zones_sf <- st_read("data/zones_shapefile.shp")
+print(zones_sf)
 st_geometry_type(zones_sf)
 
 tm_shape(zones_sf) + 
@@ -267,7 +268,12 @@ plot(fin_w, pch= 19, cex = 0.5)
 
 ```{r}
 #kernel density 
+
 kernel_whales <- kernelUD(xy = whale_exp,
+                           h = "href")
+kernel_blue <- kernelUD(xy = blue_w,
+                           h = "href")
+kernel_fin <- kernelUD(xy = fin_w,
                            h = "href")
 kernel_humpack <- kernelUD(xy = humpback_w,
                            h = "href")
@@ -329,7 +335,7 @@ plot(hr_75_fin, col = "gray12", main = "Kernel Density Home Range 75% of Fin Wha
 ```
 
 ```{r}
-#Converting into SF, to it can be plotted in Tmap
+#Converting into SF, so it can be plotted in Tmap and clipped to zones_sf
 
 hr_90_humpback_sf <- st_as_sf(hr_90_humpback)
 hr_75_humpback_sf <- st_as_sf(hr_75_humpback)
@@ -340,6 +346,174 @@ hr_75_fin_sf <- st_as_sf(hr_75_fin)
 
 ```
 
+
+```{r}
+#Clipping home range to Ocean Polygon (zones_sf)
+zones_sf <- st_read("data/zones_shapefile.shp")
+
+#Transform projection of zones_sf
+zones_sf <- st_transform(zones_sf, crs = 4326)
+
+# Combine all polygons into one single geometry (for the entire zones_sf dataset)
+zones_combined <- zones_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+
+# Check the result
+#print(zones_combined)
+# Plot the merged geometry
+#plot(zones_combined$geometry)
+
+
+```
+
+# Humpback Whale 
+
+```{r}
+# Clip home range to zones, unifying polygons
+
+#humpback 90
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_90_humpback_sf <- st_make_valid(hr_90_humpback_sf)
+
+# Union the geometries and apply st_make_valid() again after union
+hr_90_humpback_sf_united <- hr_90_humpback_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_90_humpback_sf_united <- st_make_valid(hr_90_humpback_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_90_humpback_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning.")
+} else {
+  cat("The geometry is valid.")
+}
+
+#humpback 75 
+
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_75_humpback_sf <- st_make_valid(hr_75_humpback_sf)
+
+# Union the geometries and apply st_make_valid() again after the union
+hr_75_humpback_sf_united <- hr_75_humpback_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_75_humpback_sf_united <- st_make_valid(hr_75_humpback_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_75_humpback_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning for 75%.\n")
+} else {
+  cat("The geometry is valid for 75%.\n")
+}
+```
+
+
+
+```{r}
+# Clip home range to zones, unifying polygons
+
+#blue 90
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_90_blue_sf <- st_make_valid(hr_90_blue_sf)
+
+# Union the geometries and apply st_make_valid() again after union
+hr_90_blue_sf_united <- hr_90_blue_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_90_blue_sf_united <- st_make_valid(hr_90_blue_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_90_blue_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning.")
+} else {
+  cat("The geometry is valid.")
+}
+
+#blue 75 
+
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_75_blue_sf <- st_make_valid(hr_75_blue_sf)
+
+# Union the geometries and apply st_make_valid() again after the union
+hr_75_blue_sf_united <- hr_75_blue_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_75_blue_sf_united <- st_make_valid(hr_75_blue_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_75_blue_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning for 75%.\n")
+} else {
+  cat("The geometry is valid for 75%.\n")
+}
+```
+
+
+#Fin Whale
+
+```{r}
+# Clip home range to zones, unifying polygons
+
+#Fin 90
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_90_fin_sf <- st_make_valid(hr_90_fin_sf)
+
+# Union the geometries and apply st_make_valid() again after union
+hr_90_fin_sf_united <- hr_90_fin_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_90_fin_sf_united <- st_make_valid(hr_90_fin_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_90_fin_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning.")
+} else {
+  cat("The geometry is valid.")
+}
+
+#Fin 75 
+
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_75_fin_sf <- st_make_valid(hr_75_fin_sf)
+
+# Union the geometries and apply st_make_valid() again after the union
+hr_75_fin_sf_united <- hr_75_fin_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_75_fin_sf_united <- st_make_valid(hr_75_fin_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_75_fin_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning for 75%.\n")
+} else {
+  cat("The geometry is valid for 75%.\n")
+}
+```
+
+
+```{r}
+#Intersect humpback with  zones
+
+zones_combined <- st_make_valid(zones_combined)
+hr_90_humpback_zones <- st_make_valid(hr_90_humpback_zones)
+hr_90_humpback_zones <- st_intersection(hr_90_humpback_sf_united, zones_combined)
+
+hr_75_humpback_zones <- st_make_valid(hr_75_humpback_zones)
+hr_75_humpback_zones <- st_intersection(hr_75_humpback_sf_united, zones_combined)
+
+#blue
+zones_combined <- st_make_valid(zones_combined)
+hr_90_blue_zones <- st_make_valid(hr_90_blue_zones)
+hr_90_blue_zones <- st_intersection(hr_90_blue_sf_united, zones_combined)
+
+hr_75_blue_zones <- st_make_valid(hr_75_blue_zones)
+hr_75_blue_zones <- st_intersection(hr_75_blue_sf_united, zones_combined)
+
+#fin
+hr_90_fin_zones <- st_make_valid(hr_90_fin_zones)
+hr_90_fin_zones <- st_intersection(hr_90_fin_sf_united, zones_combined)
+
+hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
+hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
+
+
+```
+
+
 # Home Range TMaps 
 
 ```{r}
@@ -347,14 +521,14 @@ hr_75_fin_sf <- st_as_sf(hr_75_fin)
 #Humpback Whale
    tmap_mode("view")  
     
-    tm_shape(hr_90_humpback_sf) +  # The shapefile data (zones_sf)
+    tm_shape(hr_90_humpback_zones) +  # The shapefile data (zones_sf)
       tm_polygons(
         col = "lightblue",  # Color for polygons
         border.col = "darkblue",  # Color for borders
         alpha = 0.5
       ) +
       tm_borders() +  # Add borders for the polygons
-      tm_shape(hr_75_humpback_sf) +
+      tm_shape(hr_75_humpback_zones) +
       tm_polygons(
               col = "hotpink",
               border.col = "darkblue", 
@@ -364,8 +538,29 @@ hr_75_fin_sf <- st_as_sf(hr_75_fin)
         type = "fill",
         labels = c("90% Kernel density", "75% Kernel density"),
         col = c("lightblue", "hotpink"))
+    
+    #plot(zones_sf_grouped)
 
 ```
+
+
+```{r}
+# Check how many unique FishingZon categories there are
+unique(zones_sf$FishingZon)
+
+
+zones_sf_combined <- zones_sf %>%
+  group_by(FishingZon) %>%
+  summarize(geometry = st_combine(geometry), .groups = "drop")  # Combine without merging
+zones_sf_grouped <- zones_sf_combined %>%
+  summarize(geometry = st_union(geometry))  # Now union the combined geometries
+
+
+# Plot the grouped zones
+plot(zones_sf_grouped$geometry)
+
+```
+
 
 ```{r}
 #Blue Whale 
@@ -400,14 +595,14 @@ tmap_mode("view")
     tm_shape(hr_90_fin_sf) +  # The shapefile data (zones_sf)
       tm_polygons(
         col = "lightblue",  # Color for polygons
-        border.col = "darkblue",  # Color for borders
+        border.col = "blue",  # Color for borders
         alpha = 0.5
       ) +
       tm_borders() +  # Add borders for the polygons
       tm_shape(hr_75_fin_sf) +
       tm_polygons(
               col = "hotpink",
-              border.col = "darkblue", 
+              border.col = "blue", 
               alpha = 0.5) +
       tm_basemap(server = "Esri.WorldImagery") +
       tm_add_legend(
@@ -417,8 +612,7 @@ tmap_mode("view")
 ```
 
 
+
+```{r}
 #Home range plots + masking with shapefile (excluding continient)
 ```{r}
-
-
-
