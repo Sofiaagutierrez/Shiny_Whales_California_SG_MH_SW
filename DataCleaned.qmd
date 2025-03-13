@@ -22,10 +22,10 @@ whale_data <- read.csv("whale_alert.csv", header = TRUE, sep = ",")
 
 #cleaning off columns
 
-columns_to_remove <- c("project_id", "trip_id", "bearing", "photos", "photos_taken", 
-                       "whale_alert_submitter_name", "whale_alert_submitter_email", 
-                       "whale_alert_submitter_phone", "comments", "animal_status", 
-                       "Id", "X.1", "X.2", "X.3", "X.4", "X.5", "X.6", "X.7", "X", "Y")
+whale_cleaned <- whale_data %>% 
+  select(-all_of(c(
+                "project_id", "trip_id", "bearing", "photos", "photos_taken",                                   "whale_alert_submitter_name", "whale_alert_submitter_email",                                   "whale_alert_submitter_phone", "comments", "animal_status","Id", 
+                 "X.1", "X.2", "X.3", "X.4", "X.5", "X.6", "X.7", "X", "Y")))
 
 whale_cleaned <- whale_data %>% dplyr::select(-any_of(columns_to_remove))
 
@@ -68,6 +68,11 @@ whale_raw <- read_csv("data/whale_cleaned.csv")
 # Expand rows based on number_sighted
 whale_expanded <- whale_raw %>%
   uncount(weights = number_sighted)  # Duplicates rows based on the value in number_sighted
+
+#Filtering data for each species (if needed)
+humpback_whales <- whale_expanded %>% filter(species == "Humpback Whale")
+blue_whales <- whale_expanded %>% filter(species == "Blue Whale")
+fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
 
 # Save to CSV (optional)
 write_csv(whale_expanded, "data/whale_expanded.csv")

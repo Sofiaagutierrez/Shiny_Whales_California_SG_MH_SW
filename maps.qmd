@@ -5,6 +5,7 @@ format: html
 ---
 
 ```{r}
+library(readr) 
 library(tmap)
 library(dplyr)
 library(sf)
@@ -12,25 +13,13 @@ library(stars)
 library(spatstat)
 library(terra)
 library(ggplot2) 
-#worldelevation = read_stars("data/worldelevation.tif")
-#worldvector = read_sf("data/worldvector.gpkg")
-#worldcities = read_sf("data/worldcities.gpkg")
+library(tidyr)
+worldelevation = read_stars("data/worldelevation.tif")
+worldvector = read_sf("data/worldvector.gpkg")
+worldcities = read_sf("data/worldcities.gpkg")
 ```
 
-```{r}
-#California Coast
-
-tmap_mode("view")
-
-tm_shape(worldelevation, bbox = c(-130, 25, -110, 50)) +  # Approximate California extent
-  tm_raster("worldelevation.tif", palette = terrain.colors(8)) +
-tm_shape(worldvector, bbox = c(-125, 32, -114, 42)) +
-  tm_borders() +
-tm_shape(worldcities, is.master = TRUE, bbox = c(-130, 25, -110, 50)) +
-  tm_dots() +
-  tm_text("name")
-
-```
+# Zones Map
 
 ```{r}
 zones_sf <- st_read("data/zones_shapefile.shp")
@@ -44,18 +33,10 @@ tm_shape(zones_sf) +
   ) +
   tm_basemap(server = "Esri.WorldImagery")
 
-
 ```
 
-```{r}
-zones_sf_simplified <- st_simplify(zones_sf, dTolerance = 100)  #Simplify geometries
-tm_shape(zones_sf_simplified) + 
-  tm_polygons(col = "lightblue", alpha = 0.3) + 
-  tm_basemap(server = "Esri.WorldImagery")
 
-```
-
-# MAP
+# Zones Map + Whale Sightings (2014-2024)
 
 ```{r}
 
@@ -87,6 +68,7 @@ whales_ppp <- ppp(x = st_coordinates(humpback_whales_sf)[,1],
                   y = st_coordinates(humpback_whales_sf)[,2],
                   window = owin(c(min(st_coordinates(humpback_whales_sf)[,1]), 
                                   max(st_coordinates(humpback_whales_sf)[,1])), 
+                          
                                 c(min(st_coordinates(humpback_whales_sf)[,2]), 
                                   max(st_coordinates(humpback_whales_sf)[,2]))))
 #Kernel density estimation
@@ -230,7 +212,7 @@ for (yr in names(kde_list)) {
 }
 ```
 
-# Home Ranges 
+# Home Ranges with adehanitatHR
 
 ```{r}
 library(adehabitatHR)
@@ -247,11 +229,9 @@ humpback_whales <- whale_expanded %>% filter(species == "Humpback Whale")
 blue_whales <- whale_expanded %>% filter(species == "Blue Whale")
 fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
 
-
 #Create a projection, Create SPDF and Check CRS
 #CRS projection, variable prj
 prj <- "+init=epsg:4326"
-
 
 
 #Creating a SpatialPointsDataFrame
@@ -282,8 +262,10 @@ plot(whale_exp, pch= 19, cex = 0.5)
 plot(humpback_w, pch= 19, cex = 0.5)
 plot(blue_w, pch= 19, cex = 0.5)
 plot(fin_w, pch= 19, cex = 0.5)
+```
 
 
+```{r}
 #kernel density 
 kernel_whales <- kernelUD(xy = whale_exp,
                            h = "href")
@@ -295,21 +277,148 @@ kernel_fin <- kernelUD(xy = fin_w,
                            h = "href")
 
 #quick visualization 
-
 image(kernel_whales)
 image(kernel_humpack)
 image(kernel_blue)
 image(kernel_fin)
-
 ```
 
+# Humpback Whale
 ```{r}
 #extracting 75% and 90%,see in literature which % could be best 
-
 hr_90_humpback <- getverticeshr(x = kernel_humpack, percent = 90) 
 hr_75_humpback <- getverticeshr(x = kernel_humpack, percent = 75)
 
 #checking classes 
-(hr_90_humpback)
-(hr_75_humpback)
+#class(hr_90_humpback)
+#class(hr_75_humpback)
+
+plot(hr_90_humpback, col = "lightblue", main = "Kernel Density Home Range 90% of Humpback Whale 2014-2024")
+plot(hr_75_humpback, col = "lightblue", main = "Kernel Density Home Range 75% of Humpback Whale 2014-2024")
+
+
 ```
+
+# Blue Whale
+```{r}
+#extracting 75% and 90%,see in literature which % could be best 
+hr_90_blue <- getverticeshr(x = kernel_blue, percent = 90) 
+hr_75_blue <- getverticeshr(x = kernel_blue, percent = 75)
+
+#checking classes 
+#class(hr_90_blue)
+#class(hr_75_blue)
+
+plot(hr_90_blue, col = "blue", main = "Kernel Density Home Range 90% of Blue Whale 2014-2024")
+plot(hr_75_blue, col = "blue", main = "Kernel Density Home Range 75% of Blue  Whale 2014-2024")
+
+```
+
+# Fin Whale 
+```{r}
+#extracting 75% and 90%,see in literature which % could be best 
+hr_90_fin <- getverticeshr(x = kernel_fin, percent = 90) 
+hr_75_fin <- getverticeshr(x = kernel_fin, percent = 75)
+
+#checking classes 
+#class(hr_90_fin)
+#class(hr_75_fin)
+
+plot(hr_90_fin, col = "gray12", main = "Kernel Density Home Range 90% of Fin Whale 2014-2024")
+plot(hr_75_fin, col = "gray12", main = "Kernel Density Home Range 75% of Fin Whale 2014-2024")
+```
+
+```{r}
+#Converting into SF, to it can be plotted in Tmap
+
+hr_90_humpback_sf <- st_as_sf(hr_90_humpback)
+hr_75_humpback_sf <- st_as_sf(hr_75_humpback)
+hr_90_blue_sf <- st_as_sf(hr_90_blue)
+hr_75_blue_sf <- st_as_sf(hr_75_blue)
+hr_90_fin_sf <- st_as_sf(hr_90_fin)
+hr_75_fin_sf <- st_as_sf(hr_75_fin)
+
+```
+
+# Home Range TMaps 
+
+```{r}
+
+#Humpback Whale
+   tmap_mode("view")  
+    
+    tm_shape(hr_90_humpback_sf) +  # The shapefile data (zones_sf)
+      tm_polygons(
+        col = "lightblue",  # Color for polygons
+        border.col = "darkblue",  # Color for borders
+        alpha = 0.5
+      ) +
+      tm_borders() +  # Add borders for the polygons
+      tm_shape(hr_75_humpback_sf) +
+      tm_polygons(
+              col = "hotpink",
+              border.col = "darkblue", 
+              alpha = 0.5) +
+      tm_basemap(server = "Esri.WorldImagery") +
+      tm_add_legend(
+        type = "fill",
+        labels = c("90% Kernel density", "75% Kernel density"),
+        col = c("lightblue", "hotpink"))
+
+```
+
+```{r}
+#Blue Whale 
+
+tmap_mode("view")  
+    
+    tm_shape(hr_90_blue_sf) +  # The shapefile data (zones_sf)
+      tm_polygons(
+        col = "lightblue",  # Color for polygons
+        border.col = "darkblue",  # Color for borders
+        alpha = 0.5
+      ) +
+      tm_borders() +  # Add borders for the polygons
+      tm_shape(hr_75_blue_sf) +
+      tm_polygons(
+              col = "hotpink",
+              border.col = "darkblue", 
+              alpha = 0.5) +
+      tm_basemap(server = "Esri.WorldImagery") +
+      tm_add_legend(
+        type = "fill",
+        labels = c("90% Kernel density", "75% Kernel density"),
+        col = c("lightblue", "hotpink"))
+
+
+```
+
+```{r}
+#Fin Whale 
+tmap_mode("view")  
+    
+    tm_shape(hr_90_fin_sf) +  # The shapefile data (zones_sf)
+      tm_polygons(
+        col = "lightblue",  # Color for polygons
+        border.col = "darkblue",  # Color for borders
+        alpha = 0.5
+      ) +
+      tm_borders() +  # Add borders for the polygons
+      tm_shape(hr_75_fin_sf) +
+      tm_polygons(
+              col = "hotpink",
+              border.col = "darkblue", 
+              alpha = 0.5) +
+      tm_basemap(server = "Esri.WorldImagery") +
+      tm_add_legend(
+        type = "fill",
+        labels = c("90% Kernel density", "75% Kernel density"),
+        col = c("lightblue", "hotpink"))
+```
+
+
+#Home range plots + masking with shapefile (excluding continient)
+```{r}
+
+
+
