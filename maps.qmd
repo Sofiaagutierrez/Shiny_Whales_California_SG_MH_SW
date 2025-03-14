@@ -40,7 +40,6 @@ tm_shape(zones_sf) +
 # Zones Map + Whale Sightings (2014-2024)
 
 ```{r}
-
    tmap_mode("view")  
     
     tm_shape(zones_sf) +  # The shapefile data (zones_sf)
@@ -83,6 +82,10 @@ plot(kde)
 #Humpback Whale
 
 ```{r}
+
+# Expand rows based on number_sighted
+whale_expanded <- whale_raw %>%
+  uncount(weights = number_sighted)  # Duplicates rows based on the value in number_sighted
 
 #Convert your data into an sf object
 humpback_sf <- whale_expanded %>%
@@ -166,8 +169,6 @@ for (yr in names(kde_list)) {
   plot(kde_list[[yr]], main = paste("KDE for", yr))
 }
 
-
-
 ```
 
 #Fin whale
@@ -213,7 +214,7 @@ for (yr in names(kde_list)) {
 }
 ```
 
-# Home Ranges with adehanitatHR
+# Home Ranges with adehabitatHR
 
 ```{r}
 library(adehabitatHR)
@@ -233,8 +234,10 @@ fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
 #Create a projection, Create SPDF and Check CRS
 #CRS projection, variable prj
 prj <- "+init=epsg:4326"
+```
 
 
+```{r}
 #Creating a SpatialPointsDataFrame
 
 whale_exp <- SpatialPointsDataFrame(coords = coordinates(cbind(whale_expanded$longitude,
@@ -487,6 +490,7 @@ if (!st_is_valid(hr_75_fin_sf_united)) {
 
 ```{r}
 #Intersect humpback with  zones
+#humpback
 
 zones_combined <- st_make_valid(zones_combined)
 hr_90_humpback_zones <- st_make_valid(hr_90_humpback_zones)
@@ -494,27 +498,34 @@ hr_90_humpback_zones <- st_intersection(hr_90_humpback_sf_united, zones_combined
 
 hr_75_humpback_zones <- st_make_valid(hr_75_humpback_zones)
 hr_75_humpback_zones <- st_intersection(hr_75_humpback_sf_united, zones_combined)
+```
 
+
+```{r}
 #blue
 zones_combined <- st_make_valid(zones_combined)
-hr_90_blue_zones <- st_make_valid(hr_90_blue_zones)
+#hr_90_blue_zones <- st_make_valid(hr_90_blue_zones)
 hr_90_blue_zones <- st_intersection(hr_90_blue_sf_united, zones_combined)
 
-hr_75_blue_zones <- st_make_valid(hr_75_blue_zones)
+#hr_75_blue_zones <- st_make_valid(hr_75_blue_zones)
 hr_75_blue_zones <- st_intersection(hr_75_blue_sf_united, zones_combined)
+```
 
+
+```{r}
 #fin
-hr_90_fin_zones <- st_make_valid(hr_90_fin_zones)
+zones_combined <- st_make_valid(zones_combined)
+#hr_90_fin_zones <- st_make_valid(hr_90_fin_zones)
 hr_90_fin_zones <- st_intersection(hr_90_fin_sf_united, zones_combined)
 
-hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
+#hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
 hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
 
 
 ```
 
 
-# Home Range TMaps 
+# Humpback Whale Kernel Density Map, #All years 
 
 ```{r}
 
@@ -543,38 +554,20 @@ hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
 
 ```
 
+# Blue Whale Kernel Density Map, #All years 
 
 ```{r}
-# Check how many unique FishingZon categories there are
-unique(zones_sf$FishingZon)
-
-
-zones_sf_combined <- zones_sf %>%
-  group_by(FishingZon) %>%
-  summarize(geometry = st_combine(geometry), .groups = "drop")  # Combine without merging
-zones_sf_grouped <- zones_sf_combined %>%
-  summarize(geometry = st_union(geometry))  # Now union the combined geometries
-
-
-# Plot the grouped zones
-plot(zones_sf_grouped$geometry)
-
-```
-
-
-```{r}
-#Blue Whale 
 
 tmap_mode("view")  
     
-    tm_shape(hr_90_blue_sf) +  # The shapefile data (zones_sf)
+    tm_shape(hr_90_blue_zones) +  # The shapefile data (zones_sf)
       tm_polygons(
         col = "lightblue",  # Color for polygons
         border.col = "darkblue",  # Color for borders
         alpha = 0.5
       ) +
       tm_borders() +  # Add borders for the polygons
-      tm_shape(hr_75_blue_sf) +
+      tm_shape(hr_75_blue_zones) +
       tm_polygons(
               col = "hotpink",
               border.col = "darkblue", 
@@ -588,18 +581,19 @@ tmap_mode("view")
 
 ```
 
+# Fin Whale Kernel Density Map, #All years 
 ```{r}
-#Fin Whale 
+
 tmap_mode("view")  
     
-    tm_shape(hr_90_fin_sf) +  # The shapefile data (zones_sf)
+    tm_shape(hr_90_fin_zones) +  # The shapefile data (zones_sf)
       tm_polygons(
         col = "lightblue",  # Color for polygons
         border.col = "blue",  # Color for borders
         alpha = 0.5
       ) +
       tm_borders() +  # Add borders for the polygons
-      tm_shape(hr_75_fin_sf) +
+      tm_shape(hr_75_fin_zones) +
       tm_polygons(
               col = "hotpink",
               border.col = "blue", 
@@ -614,5 +608,5 @@ tmap_mode("view")
 
 
 ```{r}
-#Home range plots + masking with shapefile (excluding continient)
+
 ```{r}
