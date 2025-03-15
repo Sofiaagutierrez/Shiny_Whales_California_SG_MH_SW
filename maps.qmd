@@ -14,9 +14,9 @@ library(spatstat)
 library(terra)
 library(ggplot2) 
 library(tidyr)
-worldelevation = read_stars("data/worldelevation.tif")
-worldvector = read_sf("data/worldvector.gpkg")
-worldcities = read_sf("data/worldcities.gpkg")
+#worldelevation = read_stars("data/worldelevation.tif")
+#worldvector = read_sf("data/worldvector.gpkg")
+#worldcities = read_sf("data/worldcities.gpkg")
 ```
 
 # Zones Map
@@ -262,10 +262,10 @@ fin_w <- SpatialPointsDataFrame(coords = coordinates(cbind(fin_whales$longitude,
 
 
 #quick visualization 
-plot(whale_exp, pch= 19, cex = 0.5) 
-plot(humpback_w, pch= 19, cex = 0.5)
-plot(blue_w, pch= 19, cex = 0.5)
-plot(fin_w, pch= 19, cex = 0.5)
+#plot(whale_exp, pch= 19, cex = 0.5) 
+#plot(humpback_w, pch= 19, cex = 0.5)
+#plot(blue_w, pch= 19, cex = 0.5)
+#plot(fin_w, pch= 19, cex = 0.5)
 ```
 
 
@@ -286,10 +286,10 @@ kernel_fin <- kernelUD(xy = fin_w,
                            h = "href")
 
 #quick visualization 
-image(kernel_whales)
-image(kernel_humpack)
-image(kernel_blue)
-image(kernel_fin)
+#image(kernel_whales)
+#image(kernel_humpack)
+#image(kernel_blue)
+#image(kernel_fin)
 ```
 
 # Humpback Whale
@@ -302,8 +302,8 @@ hr_75_humpback <- getverticeshr(x = kernel_humpack, percent = 75)
 #class(hr_90_humpback)
 #class(hr_75_humpback)
 
-plot(hr_90_humpback, col = "lightblue", main = "Kernel Density Home Range 90% of Humpback Whale 2014-2024")
-plot(hr_75_humpback, col = "lightblue", main = "Kernel Density Home Range 75% of Humpback Whale 2014-2024")
+#plot(hr_90_humpback, col = "lightblue", main = "Kernel Density Home Range 90% of Humpback Whale 2014-2024")
+#plot(hr_75_humpback, col = "lightblue", main = "Kernel Density Home Range 75% of Humpback Whale 2014-2024")
 
 
 ```
@@ -318,8 +318,8 @@ hr_75_blue <- getverticeshr(x = kernel_blue, percent = 75)
 #class(hr_90_blue)
 #class(hr_75_blue)
 
-plot(hr_90_blue, col = "blue", main = "Kernel Density Home Range 90% of Blue Whale 2014-2024")
-plot(hr_75_blue, col = "blue", main = "Kernel Density Home Range 75% of Blue  Whale 2014-2024")
+#plot(hr_90_blue, col = "blue", main = "Kernel Density Home Range 90% of Blue Whale 2014-2024")
+#plot(hr_75_blue, col = "blue", main = "Kernel Density Home Range 75% of Blue  Whale 2014-2024")
 
 ```
 
@@ -333,8 +333,8 @@ hr_75_fin <- getverticeshr(x = kernel_fin, percent = 75)
 #class(hr_90_fin)
 #class(hr_75_fin)
 
-plot(hr_90_fin, col = "gray12", main = "Kernel Density Home Range 90% of Fin Whale 2014-2024")
-plot(hr_75_fin, col = "gray12", main = "Kernel Density Home Range 75% of Fin Whale 2014-2024")
+#plot(hr_90_fin, col = "gray12", main = "Kernel Density Home Range 90% of Fin Whale 2014-2024")
+#plot(hr_75_fin, col = "gray12", main = "Kernel Density Home Range 75% of Fin Whale 2014-2024")
 ```
 
 ```{r}
@@ -493,10 +493,10 @@ if (!st_is_valid(hr_75_fin_sf_united)) {
 #humpback
 
 zones_combined <- st_make_valid(zones_combined)
-hr_90_humpback_zones <- st_make_valid(hr_90_humpback_zones)
+#hr_90_humpback_zones <- st_make_valid(hr_90_humpback_zones)
 hr_90_humpback_zones <- st_intersection(hr_90_humpback_sf_united, zones_combined)
 
-hr_75_humpback_zones <- st_make_valid(hr_75_humpback_zones)
+#hr_75_humpback_zones <- st_make_valid(hr_75_humpback_zones)
 hr_75_humpback_zones <- st_intersection(hr_75_humpback_sf_united, zones_combined)
 ```
 
