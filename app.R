@@ -220,17 +220,37 @@ ui <- navbarPage(
                )
              )
     ),
-    tabPanel("Interactive Map ", 
-             # Use fluidRow and column to control map space
-             fluidRow(
-               column(6,  # Set the left column to hold content or can be left empty
-                      p("This is an interactive map of whale sightings and zones.") 
+    
+    tabPanel("Interactive Map",
+             sidebarLayout(
+               sidebarPanel(
+                 p("This section will display a map of different zones."),
+                 
+                 # Dropdown for Whale Species Selection, including "All Species"
+                 selectInput("species", "Select Whale Species:",
+                             choices = c("All Species", unique(whale_sf$species)),
+                             selected = "All Species"
+                 ),
+                 
+                 # Dropdown for Year Selection, including "All Years"
+                 selectInput("year", "Select Year:",
+                             choices = c("All Years", sort(unique(whale_sf$year))),
+                             selected = "All Years"
+                 ),
+                 
+                 # Dropdown for Month Selection, including "All Months"
+                 selectInput("month", "Select Month:",
+                             choices = c("All Months", month.name),
+                             selected = "All Months"
+                 )
                ),
-               column(6,  # Set the map to occupy the right side
-                      tmapOutput("whale_map", height = "600px")  # Set map height to 600px for larger map
+               
+               mainPanel(
+                 tmapOutput("whale_map")  # Display the map
                )
              )
     ), 
+    
     
     tabPanel("Whale Migration Forecast and Time Series Analysis", 
              sidebarLayout(
@@ -353,19 +373,74 @@ server <- function(input, output) {
     whale_sum_table()
   })
   
+  
+  #Reactive expression for whale map  
+  filtered_whale_sf <- reactive({
+    req(input$species, input$year, input$month)
+    
+    
+    print("Reactive function triggered")  
+    
+    # Convert full month name (e.g., "February") to 3-letter format (e.g., "Feb")
+    input_month_abbr <- format(as.Date(paste0("1 ", input$month), "%d %B"), "%b")
+    
+    # Debug prints
+    print(paste("Converted Month:", input_month_abbr))
+    print(paste("Year Input:", input$year))
+    print(paste("Species selected:", input$species))
+    
+    # Convert year to numeric if it's not already
+    year_input <- as.numeric(input$year)
+    print(paste("Year input (numeric):", year_input))   # Check the numeric conversion
+    
+    
+    filtered_data <-  whale_sf %>%
+      mutate(month = trimws(month)) %>% 
+      filter(
+        (input$species == "All Species" | species == input$species), 
+        (input$year == "All Years" | year == year_input), 
+        (input$month == "All Months" | month == input_month_abbr)  
+      )
+    
+    print(paste("Filtered data row count:", nrow(filtered_data)))  # Check filtered data row count
+    print(head(filtered_data))  # Preview filtered data
+    return(filtered_data)
+  })
+  
+  
+  #Ensure tmap is in view mode
+  observe({
+    tmap_mode("view")
+  })
+  
   # Render tmap
   output$whale_map <- renderTmap({
-    tmap_mode("view")  
+    data <- filtered_whale_sf()
     
-    tm_shape(zones_sf) +  
+    if (nrow(data) == 0) {
+      showNotification("No data available for the selected filters.", type = "warning")
+      return(NULL)  # Prevents error when data is empty
+    }
+    
+    tm_shape(zones_sf) +  # The shapefile data (zones_sf)
       tm_polygons(
-        col = "lightblue",  
-        border.col = "darkblue",  
+        col = "lightblue",  # Color for polygons
+        border.col = "darkblue",  # Color for borders
         alpha = 0.3
       ) +
-      tm_borders() +  
-      tm_basemap(server = "Esri.WorldImagery")  
+      tm_borders() +  # Add borders for the polygons
+      tm_shape(data) +
+      tm_dots(
+        col = "pink",
+        size = 0.5, 
+        alpha = 0.8,   # Adjust transparency for visibility
+        shape = 21,    # Use a circle with fill
+        border.col = "black",  # Ensure there's an outline
+        border.lwd = 0.5) +
+      tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
   })
+}
+
   # For species selection, filter the data
   filtered_whale_data <- reactive({
     if (input$forecast_species == "Blue Whale") {
@@ -410,7 +485,6 @@ server <- function(input, output) {
       xlab("Year") + 
       ylab("Total Sightings")
   })
-}
 
 # Run the application 
 shinyApp(ui = ui, server = server)
