@@ -439,7 +439,6 @@ server <- function(input, output) {
         border.lwd = 0.5) +
       tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
   })
-}
 
   # For species selection, filter the data
   filtered_whale_data <- reactive({
@@ -485,6 +484,7 @@ server <- function(input, output) {
       xlab("Year") + 
       ylab("Total Sightings")
   })
+}
 
 # Run the application 
 shinyApp(ui = ui, server = server)
