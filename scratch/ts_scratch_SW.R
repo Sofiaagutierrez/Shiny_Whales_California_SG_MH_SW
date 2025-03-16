@@ -149,3 +149,4 @@ ggplot(whale_season_sightings, aes(x = season, y = total_sighted, fill = species
 
 
 
+

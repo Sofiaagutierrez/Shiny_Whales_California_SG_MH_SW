@@ -150,10 +150,10 @@ zones_sf <- st_read("data/zones_shapefile.shp")
 
 # Create the user interface (this is the front end side of the Shiny App)
 ui <- navbarPage(
-  title = div(style = "color: white; font-weight: bold; font-size: 60px",
-              "Whale Alert - Endangered Species Monitoring", 
-              tags$img(src = "noaa_logo.png", height = "100px", width = "100px",  style = "margin-left: 50px;")), 
+  title = div(style = "color: white; font-weight: bold; font-size: 50px", "Whale Alert - Endangered Species Monitoring", 
+              tags$img(src = "noaa_logo.png", height = "100px", style = "margin-left: 50px;")), 
   theme = bslib::bs_theme(bootswatch = "flatly", primary = "#1874CD"), 
+  
   
   # Add custom CSS for background color and other styling
   tags$head(
@@ -182,28 +182,24 @@ ui <- navbarPage(
   ),
   
   # Apply the navbarPage structure for navigation
-  tabsetPanel(  
-    # Add an image to the Data Information tab label
-    tabPanel(
-      tagList(tags$img(src = "home.png", height = "20px", width = "20px", style = "margin-right: 10px;"), "Data Information"),  # Add image to the tab label
-      # Center the entire content using div and CSS
-      tags$div(
-        style = "display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;",
-        h3("Project Motivation"),
-        p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California. 
-           This information can aid in informing vessel speed reduction (VSR) efforts, as well as concerns surrounding entanglement. We hope that our Shiny App might inform 
-           future compliance efforts, as well as provide a useful interface for future citizen scientists."),
-        h3("Data Summary"), 
-        p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
-           Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
-           The relevant columns for this Shiny App include the X, Y position of the whale observation, 
-           the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
-        tags$img(src = "table.png", height = "150px", width = "450px", style = "margin-top: 50px;")  # Adjust the margin-top to move the image down
-      )
-), 
-
-    tabPanel(
-      tagList(tags$img(src = "sun.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Trends and Seasonality"),  
+  tabsetPanel(  # Add tabsetPanel for tabs 
+    tabPanel("Data Information", 
+             # Center the entire content using div and CSS
+             tags$div(
+               style = "display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;",
+               h3("Project Motivation"),
+               p("The motivation for this project is to spatially and statistically assess endangered whale species population dynamics across California. 
+                 This information can aid in informing vessel speed reduction (VSR) efforts, as well as concerns surrounding entanglement. We hope that our Shiny App might inform 
+                 future compliance efforts, as well as provide a useful interface for future citizen scientists."),
+               h3("Data Summary"), 
+               p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
+               Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
+               The relevant columns for this Shiny App include the X, Y position of the whale observation, 
+                 the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
+               tags$img(src = "humpback.jpg", height = "400px", width = "800px")
+             )
+    ),
+    tabPanel("Whale Sightings Trends and Seasonality",  
              sidebarLayout(
                sidebarPanel(
                  radioButtons(
@@ -224,40 +220,19 @@ ui <- navbarPage(
                )
              )
     ),
-    
-    tabPanel(
-      tagList(tags$img(src = "loupe.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Interactive Map"),
-             sidebarLayout(
-               sidebarPanel(
-                 
-                 # Dropdown for Whale Species Selection, including "All Species"
-                 selectInput("species", "Select Whale Species:",
-                             choices = c("All Species", unique(whale_sf$species)),
-                             selected = "All Species"
-                 ),
-                 
-                 # Dropdown for Year Selection, including "All Years"
-                 selectInput("year", "Select Year:",
-                             choices = c("All Years", sort(unique(whale_sf$year))),
-                             selected = "All Years"
-                 ),
-                 
-                 # Dropdown for Month Selection, including "All Months"
-                 selectInput("month", "Select Month:",
-                             choices = c("All Months", month.name),
-                             selected = "All Months"
-                 )
+    tabPanel("Interactive Map ", 
+             # Use fluidRow and column to control map space
+             fluidRow(
+               column(6,  # Set the left column to hold content or can be left empty
+                      p("This is an interactive map of whale sightings and zones.") 
                ),
-               
-               mainPanel(
-                 tmapOutput("whale_map")  # Display the map
+               column(6,  # Set the map to occupy the right side
+                      tmapOutput("whale_map", height = "600px")  # Set map height to 600px for larger map
                )
              )
     ), 
     
-    
-    tabPanel(
-      tagList(tags$img(src = "clock.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Whale Migration Forecast"), 
+    tabPanel("Whale Migration Forecast and Time Series Analysis", 
              sidebarLayout(
                sidebarPanel(
                  radioButtons(inputId = "forecast_species", 
@@ -274,9 +249,7 @@ ui <- navbarPage(
                )
              )
     ),
-    tabPanel(
-      tagList(tags$img(src = "whale.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Additional Resources and Links") , 
-      
+    tabPanel("Additional Resources", 
              h4("For more information on reducing whale strikes, check out the following document:"),
              a("Reduce Whale Strikes - Top 5 Things You Should Know", 
                href = "https://media.fisheries.noaa.gov/dam-migration/reduce-whale-strikes-top5things.pdf", 
@@ -323,37 +296,41 @@ server <- function(input, output) {
     if (input$time_series == "Annual") {
       # Annual Time Series Plot
       ggplot(whale_select(), aes(x = year, y = Total_Value, color = species)) + 
-        geom_line() +  # Line for individual species
-        scale_color_manual(values = c("Humpback Whale" = "steelblue1", "Fin Whale" = "steelblue3", "Blue Whale" = "steelblue4")) +
-        theme_bw() +  # Apply black-and-white theme
+        geom_line() + scale_color_manual(values = c("Humpback Whale" = "steelblue1", "Fin Whale" = "steelblue3", "Blue Whale" = "steelblue4")) +  # QUESTION HERE 
+        theme_bw() +
         labs(title = paste(input$whale_species, "Annual Sightings (2014-2024)"), 
              x = "Year", 
              y = "Whale Sightings") +
-        scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1)) + 
-        theme(
-          panel.border = element_rect(color = "dodgerblue4", size = 1.2), 
-          plot.title = element_text( size = 16) # Border color for the plot
-        )
-      
+        scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1))  
     } else if (input$time_series == "Monthly") {
-      # Monthly Time Series Plot with a red trendline
-      ggplot(whale_sightings_select(), aes(x = interaction(month, year), y = total_sighted, color = species, group = species)) +
-        geom_line() +  # Line for individual species
-        geom_smooth(aes(group = 1), method = "lm", color = "red3", se = FALSE, size = 0.5, linetype = "dashed") + 
-        scale_color_manual(values = c("Humpback Whale" = "steelblue1", "Fin Whale" = "steelblue3", "Blue Whale" = "steelblue4")) + 
+      # Monthly Time Series Plot
+      ggplot(whale_sightings_select(), aes(x = interaction(year, month), y = total_sighted, color = species, group = species)) +
+        geom_line() + scale_color_manual(values = c("Humpback Whale" = "steelblue1", "Fin Whale" = "steelblue3", "Blue Whale" = "steelblue4")) + 
         labs(title = paste(input$whale_species, "Monthly Sightings (2014-2024)"),
              x = "Date",
              y = "Whale Sightings") +
-        scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 12)]) +
         theme_minimal() +
-        theme(
-          axis.text.x = element_text(angle = 45, hjust = 1), 
-          plot.title = element_text(size = 16) # Border color for the plot
-        ) 
+        scale_x_discrete(
+          breaks = function(x) x[seq(1, length(x), by = 12)]) 
     }
   })
   
-  
+  # Render the stacked bar chart (Sightings by Species and Season)  # QUESTION HERE - why so far down? 
+  output$whale_season_plot <- renderPlot({
+    ggplot(whale_season_sightings, aes(x = season, y = total_sighted, fill = species)) +
+      geom_bar(stat = "identity") +
+      labs(
+        title = "Whale Sightings by Species and Season",
+        x = "Season",
+        y = "Total Sightings",
+        fill = "Species"
+      ) +
+      scale_fill_manual(values = c("Humpback Whale" = "steelblue1",  
+                                   "Fin Whale" = "steelblue3",     
+                                   "Blue Whale" = "steelblue4")) +  
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+  })
   
   # Reactive summary table for whale sightings
   whale_sum_table <- reactive({
@@ -368,9 +345,7 @@ server <- function(input, output) {
       summarize(total_sighted = sum(total_sighted), .groups = "drop") %>%
       pivot_wider(names_from = species, values_from = total_sighted, values_fill = 0) |> 
       rename(Year = year) |> 
-      mutate(Year = as.integer(Year)) %>%
-      # Apply rounding here to remove decimals from numeric columns
-      mutate(across(-Year, ~ round(. , 0)))  # Round all columns except 'Year'
+      mutate(Year = as.integer(Year)) 
   })
   
   # Render the summary table
@@ -378,73 +353,19 @@ server <- function(input, output) {
     whale_sum_table()
   })
   
-  
-  #Reactive expression for whale map  
-  filtered_whale_sf <- reactive({
-    req(input$species, input$year, input$month)
-    
-    
-    print("Reactive function triggered")  
-    
-    # Convert full month name (e.g., "February") to 3-letter format (e.g., "Feb")
-    input_month_abbr <- format(as.Date(paste0("1 ", input$month), "%d %B"), "%b")
-    
-    # Debug prints
-    print(paste("Converted Month:", input_month_abbr))
-    print(paste("Year Input:", input$year))
-    print(paste("Species selected:", input$species))
-    
-    # Convert year to numeric if it's not already
-    year_input <- as.numeric(input$year)
-    print(paste("Year input (numeric):", year_input))   # Check the numeric conversion
-    
-    
-    filtered_data <-  whale_sf %>%
-      mutate(month = trimws(month)) %>% 
-      filter(
-        (input$species == "All Species" | species == input$species), 
-        (input$year == "All Years" | year == year_input), 
-        (input$month == "All Months" | month == input_month_abbr)  
-      )
-    
-    print(paste("Filtered data row count:", nrow(filtered_data)))  # Check filtered data row count
-    print(head(filtered_data))  # Preview filtered data
-    return(filtered_data)
-  })
-  
-  
-  #Ensure tmap is in view mode
-  observe({
-    tmap_mode("view")
-  })
-  
   # Render tmap
   output$whale_map <- renderTmap({
-    data <- filtered_whale_sf()
+    tmap_mode("view")  
     
-    if (nrow(data) == 0) {
-      showNotification("No data available for the selected filters.", type = "warning")
-      return(NULL)  # Prevents error when data is empty
-    }
-    
-    tm_shape(zones_sf) +  # The shapefile data (zones_sf)
+    tm_shape(zones_sf) +  
       tm_polygons(
-        col = "lightblue",  # Color for polygons
-        border.col = "darkblue",  # Color for borders
+        col = "lightblue",  
+        border.col = "darkblue",  
         alpha = 0.3
       ) +
-      tm_borders() +  # Add borders for the polygons
-      tm_shape(data) +
-      tm_dots(
-        col = "pink",
-        size = 0.5, 
-        alpha = 0.8,   # Adjust transparency for visibility
-        shape = 21,    # Use a circle with fill
-        border.col = "black",  # Ensure there's an outline
-        border.lwd = 0.5) +
-      tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
+      tm_borders() +  
+      tm_basemap(server = "Esri.WorldImagery")  
   })
-
   # For species selection, filter the data
   filtered_whale_data <- reactive({
     if (input$forecast_species == "Blue Whale") {
