@@ -587,6 +587,8 @@ server <- function(input, output, session) {
         
         # Blue Whale Kernel Density Map  
         else if (input$species == "Blue Whale") {
+          tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+            tm_polygons(col = "lightblue", border.col = "steelblue", alpha = 0.3) +
           tm_shape(hr_75_blue_zones) +
             tm_polygons(col = "steelblue1", border.col = "darkblue", alpha = 0.5) +
             tm_borders() +
@@ -603,11 +605,15 @@ server <- function(input, output, session) {
         } 
         # Fin Whale Kernel Density Map     
         else if (input$species == "Fin Whale") {
+          tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+            tm_polygons(col = "lightblue", border.col = "steelblue", alpha = 0.3) +
           tm_shape(hr_75_fin_zones) +
-            tm_polygons(col = "steelblue1", border.col = "darkblue", alpha = 0.5) +
+            tm_polygons(col = "steelblue1", border.col = "darkblue", fill_alpha = 0.5, 
+                        auto.palette.mapping = FALSE) +
             tm_borders() +
             tm_shape(hr_90_fin_zones) +
-            tm_polygons(col = "steelblue3", border.col = "darkblue", alpha = 0.5) +
+            tm_polygons(col = "steelblue3", border.col = "darkblue", fill_alpha = 0.5, 
+                        auto.palette.mapping = FALSE) +
             tm_borders() +
             tm_basemap(server = "Esri.WorldImagery") + 
             tm_add_legend(
