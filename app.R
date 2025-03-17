@@ -416,7 +416,8 @@ ui <- navbarPage(
            Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
            The relevant columns for this Shiny App include the X, Y position of the whale observation, 
            the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
-        tags$img(src = "table.png", height = "150px", width = "450px", style = "margin-top: 50px;")  # Adjust the margin-top to move the image down
+        h3("App Spatial Extent"), 
+        tags$img(src = "map.png", height = "450", width = "350", style = "margin-top: 10px;") # Adjust the margin-top to move the image down
       )
 ), 
 
@@ -436,8 +437,8 @@ ui <- navbarPage(
                  tableOutput(outputId = "whale_sum_table"), 
                ), 
                mainPanel(
-                 plotOutput(outputId = "whale_plot"), 
-                 plotOutput(outputId = "whale_plot2"), 
+                 plotOutput(outputId = "whale_plot", height = "500px"), 
+                 plotOutput(outputId = "whale_plot2", height = "500px"), 
                  plotOutput(outputId = "whale_season_plot") 
                )
              )
@@ -510,11 +511,14 @@ ui <- navbarPage(
     ),
     tabPanel(
       tagList(tags$img(src = "whale.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Additional Resources and Links") , 
-      
-             h4("For more information on reducing whale strikes, check out the following document:"),
+      tags$div(
+        style = "display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;",
+             h4("For more information on reducing whale strikes, check out the following:"),
              a("Reduce Whale Strikes - Top 5 Things You Should Know", 
                href = "https://media.fisheries.noaa.gov/dam-migration/reduce-whale-strikes-top5things.pdf", 
                target = "_blank"), 
+        
+        
              p("Learn more about whales on the Ocean.org website:"),
              a("Whales - Ocean.org", 
                href = "https://ocean.org/whales/", 
@@ -524,8 +528,7 @@ ui <- navbarPage(
              a("Whale Alert Smartphone App Flyer", 
                href = "https://media.fisheries.noaa.gov/dam-migration/whale-alert-smartphone-app-flier.pdf", 
                target = "_blank"), 
-             h3("Contact Information"),
-             p("*Here have the contact info for relevant people*")
+      tags$img(src = "humpback.jpg", height = "300px", width = "600px",  style = "margin-top: 30px;"))
     )
   )
 )
