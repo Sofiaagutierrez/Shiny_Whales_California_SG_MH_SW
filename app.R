@@ -744,8 +744,7 @@ server <- function(input, output) {
             labels = c("90% Kernel density", "75% Kernel density"),
             col = c("steelblue1", "steelblue3"))
      
-      }
-  
+      })
 
   # For species selection, filter the data
   filtered_whale_data <- reactive({
