@@ -11,6 +11,8 @@ library(tsibble)
 library(sf)
 library(forecast)
 library(bslib)
+library(adehabitatHR)
+
 
 # Read in the Whale Alert CSV
 whale_raw <- read_csv("data/whale_cleaned.csv")
