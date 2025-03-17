@@ -526,7 +526,7 @@ ui <- navbarPage(
 
 
 # Create the server function 
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   # Reactive expression for the filtered whale data based on the selected species
   whale_select <- reactive({
