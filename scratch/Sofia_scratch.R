@@ -257,7 +257,15 @@ hr_90_fin_zones <- st_intersection(hr_90_fin_sf_united, zones_combined)
 #hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
 hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
 
+#intersecting whale-sightings with fishing zones
+whale_zones <- st_intersection(whale_sf, zones_sf)
 
+whale_sf <- whale_zones
+
+# Define a color palette for different whale species
+whale_colors <- c("Humpback Whale" = "lightpink",   # Light Pink for Humpback Whale
+                  "Blue Whale" = "#FF3399",       # Medium Pink for Blue Whale
+                  "Fin Whale" = "hotpink3")        # Darker Pink for Fin Whale
 
 
 # Create the user interface (this is the front end side of the Shiny App)
@@ -561,7 +569,8 @@ server <- function(input, output, session) {
           tm_polygons(col = "lightblue", border.col = "darkblue", alpha = 0.3) +
           tm_borders() +  # Add borders for polygons
           tm_shape(data) +  # Whale sightings data
-          tm_dots(col = "pink", size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
+          tm_dots(col = "species", palette = whale_colors,
+                  size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
           tm_basemap(server = "Esri.WorldImagery")  # Basemap
       } else if (input$map_select == "Kernel Density") {
         
@@ -606,14 +615,12 @@ server <- function(input, output, session) {
         # Fin Whale Kernel Density Map     
         else if (input$species == "Fin Whale") {
           tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
-            tm_polygons(col = "lightblue", border.col = "steelblue", alpha = 0.3) +
+            tm_polygons(fill  = "lightblue", border.col = "steelblue", fill_alpha = 0.3) +
           tm_shape(hr_75_fin_zones) +
-            tm_polygons(col = "steelblue1", border.col = "darkblue", fill_alpha = 0.5, 
-                        auto.palette.mapping = FALSE) +
+            tm_polygons(fill = "steelblue1", border.col = "darkblue", fill_alpha = 0.5)+
             tm_borders() +
             tm_shape(hr_90_fin_zones) +
-            tm_polygons(col = "steelblue3", border.col = "darkblue", fill_alpha = 0.5, 
-                        auto.palette.mapping = FALSE) +
+            tm_polygons(fill = "steelblue3", border.col = "darkblue", fill_alpha = 0.5)+
             tm_borders() +
             tm_basemap(server = "Esri.WorldImagery") + 
             tm_add_legend(
