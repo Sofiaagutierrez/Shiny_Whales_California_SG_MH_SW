@@ -146,6 +146,10 @@ whale_hump_decomp <- decompose(whale_hump_ts)
 # For map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
 
+# Expand rows based on number_sighted
+whale_expanded <- whale_raw %>%
+  uncount(weights = number_sighted)  # Duplicates rows based on the value in number_sighted
+
 # For map, converting data into sf
 whale_sf <- whale_expanded %>%
   filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
