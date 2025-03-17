@@ -146,6 +146,218 @@ whale_hump_decomp <- decompose(whale_hump_ts)
 # For map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
 
+# For map, converting data into sf
+whale_sf <- whale_expanded %>%
+  filter(species %in% c("Humpback Whale", "Fin Whale", "Blue Whale")) %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
+
+#for map kernel density 
+#Filtering data for each species (if needed)
+humpback_whales <- whale_expanded %>% filter(species == "Humpback Whale")
+blue_whales <- whale_expanded %>% filter(species == "Blue Whale")
+fin_whales <- whale_expanded %>% filter(species == "Fin Whale")
+
+#Create a projection, Create SPDF and Check CRS
+#CRS projection, variable prj
+prj <- "+init=epsg:4326"
+
+#Creating a SpatialPointsDataFrame
+
+whale_exp <- SpatialPointsDataFrame(coords = coordinates(cbind(whale_expanded$longitude,
+                                                               whale_expanded$latitude)),  
+                                    data = whale_expanded,  
+                                    proj4string = CRS(prj))
+
+humpback_w <- SpatialPointsDataFrame(coords = coordinates(cbind(humpback_whales$longitude,
+                                                                humpback_whales$latitude)),  
+                                     data = humpback_whales,  
+                                     proj4string = CRS(prj))
+
+blue_w <- SpatialPointsDataFrame(coords = coordinates(cbind(blue_whales$longitude,
+                                                            blue_whales$latitude)),  
+                                 data = blue_whales,  
+                                 proj4string = CRS(prj))
+
+fin_w <- SpatialPointsDataFrame(coords = coordinates(cbind(fin_whales$longitude,
+                                                           fin_whales$latitude)),  
+                                data = fin_whales,  
+                                proj4string = CRS(prj))
+#kernel density 
+kernel_whales <- kernelUD(xy = whale_exp,
+                          h = "href")
+kernel_blue <- kernelUD(xy = blue_w,
+                        h = "href")
+kernel_fin <- kernelUD(xy = fin_w,
+                       h = "href")
+kernel_humpack <- kernelUD(xy = humpback_w,
+                           h = "href")
+kernel_blue <- kernelUD(xy = blue_w,
+                        h = "href")
+kernel_fin <- kernelUD(xy = fin_w,
+                       h = "href")
+
+#extracting 75% and 90%
+hr_90_humpback <- getverticeshr(x = kernel_humpack, percent = 90) 
+hr_75_humpback <- getverticeshr(x = kernel_humpack, percent = 75)
+hr_90_blue <- getverticeshr(x = kernel_blue, percent = 90) 
+hr_75_blue <- getverticeshr(x = kernel_blue, percent = 75)
+hr_90_fin <- getverticeshr(x = kernel_fin, percent = 90) 
+hr_75_fin <- getverticeshr(x = kernel_fin, percent = 75)
+
+#Converting into SF, so it can be plotted in Tmap and clipped to zones_sf
+
+hr_90_humpback_sf <- st_as_sf(hr_90_humpback)
+hr_75_humpback_sf <- st_as_sf(hr_75_humpback)
+hr_90_blue_sf <- st_as_sf(hr_90_blue)
+hr_75_blue_sf <- st_as_sf(hr_75_blue)
+hr_90_fin_sf <- st_as_sf(hr_90_fin)
+hr_75_fin_sf <- st_as_sf(hr_75_fin)
+
+#Clipping home range to Ocean Polygon (zones_sf)
+zones_sf <- st_read("data/zones_shapefile.shp")
+
+#Transform projection of zones_sf
+zones_sf <- st_transform(zones_sf, crs = 4326)
+
+# Combine all polygons into one single geometry (for the entire zones_sf dataset)
+zones_combined <- zones_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+
+
+# Clip home range to zones, unifying polygons
+
+#humpback 90
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_90_humpback_sf <- st_make_valid(hr_90_humpback_sf)
+
+# Union the geometries and apply st_make_valid() again after union
+hr_90_humpback_sf_united <- hr_90_humpback_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_90_humpback_sf_united <- st_make_valid(hr_90_humpback_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_90_humpback_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning.")
+} else {
+  cat("The geometry is valid.")
+}
+
+#humpback 75 
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_75_humpback_sf <- st_make_valid(hr_75_humpback_sf)
+
+# Union the geometries and apply st_make_valid() again after the union
+hr_75_humpback_sf_united <- hr_75_humpback_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_75_humpback_sf_united <- st_make_valid(hr_75_humpback_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_75_humpback_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning for 75%.\n")
+} else {
+  cat("The geometry is valid for 75%.\n")
+}
+
+
+# Clip home range to zones, unifying polygons
+
+#blue 90
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_90_blue_sf <- st_make_valid(hr_90_blue_sf)
+
+# Union the geometries and apply st_make_valid() again after union
+hr_90_blue_sf_united <- hr_90_blue_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_90_blue_sf_united <- st_make_valid(hr_90_blue_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_90_blue_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning.")
+} else {
+  cat("The geometry is valid.")
+}
+
+#blue 75 
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_75_blue_sf <- st_make_valid(hr_75_blue_sf)
+
+# Union the geometries and apply st_make_valid() again after the union
+hr_75_blue_sf_united <- hr_75_blue_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_75_blue_sf_united <- st_make_valid(hr_75_blue_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_75_blue_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning for 75%.\n")
+} else {
+  cat("The geometry is valid for 75%.\n")
+}
+
+#Fin Whale
+
+
+# Clip home range to zones, unifying polygons
+
+#Fin 90
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_90_fin_sf <- st_make_valid(hr_90_fin_sf)
+
+# Union the geometries and apply st_make_valid() again after union
+hr_90_fin_sf_united <- hr_90_fin_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_90_fin_sf_united <- st_make_valid(hr_90_fin_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_90_fin_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning.")
+} else {
+  cat("The geometry is valid.")
+}
+
+#Fin 75 
+# Apply st_make_valid() to fix invalid geometries before the union operation
+hr_75_fin_sf <- st_make_valid(hr_75_fin_sf)
+
+# Union the geometries and apply st_make_valid() again after the union
+hr_75_fin_sf_united <- hr_75_fin_sf %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+hr_75_fin_sf_united <- st_make_valid(hr_75_fin_sf_united)
+
+# Check for validity of the geometry
+if (!st_is_valid(hr_75_fin_sf_united)) {
+  cat("The geometry is still invalid after union and cleaning for 75%.\n")
+} else {
+  cat("The geometry is valid for 75%.\n")
+}
+
+
+#Intersect whales with  zones
+#humpback
+
+zones_combined <- st_make_valid(zones_combined)
+#hr_90_humpback_zones <- st_make_valid(hr_90_humpback_zones)
+hr_90_humpback_zones <- st_intersection(hr_90_humpback_sf_united, zones_combined)
+
+#hr_75_humpback_zones <- st_make_valid(hr_75_humpback_zones)
+hr_75_humpback_zones <- st_intersection(hr_75_humpback_sf_united, zones_combined)
+
+#blue
+zones_combined <- st_make_valid(zones_combined)
+#hr_90_blue_zones <- st_make_valid(hr_90_blue_zones)
+hr_90_blue_zones <- st_intersection(hr_90_blue_sf_united, zones_combined)
+
+#hr_75_blue_zones <- st_make_valid(hr_75_blue_zones)
+hr_75_blue_zones <- st_intersection(hr_75_blue_sf_united, zones_combined)
+
+#fin
+zones_combined <- st_make_valid(zones_combined)
+#hr_90_fin_zones <- st_make_valid(hr_90_fin_zones)
+hr_90_fin_zones <- st_intersection(hr_90_fin_sf_united, zones_combined)
+
+#hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
+hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
+
 
 
 # Create the user interface (this is the front end side of the Shiny App)
@@ -227,34 +439,50 @@ ui <- navbarPage(
     
     tabPanel(
       tagList(tags$img(src = "loupe.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Interactive Map"),
-             sidebarLayout(
-               sidebarPanel(
-                 
-                 # Dropdown for Whale Species Selection, including "All Species"
-                 selectInput("species", "Select Whale Species:",
-                             choices = c("All Species", unique(whale_sf$species)),
-                             selected = "All Species"
-                 ),
-                 
-                 # Dropdown for Year Selection, including "All Years"
-                 selectInput("year", "Select Year:",
-                             choices = c("All Years", sort(unique(whale_sf$year))),
-                             selected = "All Years"
-                 ),
-                 
-                 # Dropdown for Month Selection, including "All Months"
-                 selectInput("month", "Select Month:",
-                             choices = c("All Months", month.name),
-                             selected = "All Months"
-                 )
-               ),
-               
-               mainPanel(
-                 tmapOutput("whale_map")  # Display the map
-               )
-             )
-    ), 
-    
+      sidebarLayout(
+        sidebarPanel(
+          p(""),
+          
+          # Dropdown to select which map to display
+          selectInput("map_select", "Select Map to Display:",
+                      choices = c("Whale Sightings", "Kernel Density"),
+                      selected = "Whale Sightings"
+          ),
+          
+          # Conditional UI to select species, with additional filters for Whale Sightings map
+          conditionalPanel(
+            condition = "input.map_select == 'Whale Sightings'",
+            selectInput("species", "Select Whale Species:",
+                        choices = c("All Species", unique(whale_sf$species)),
+                        selected = "All Species"
+            ),
+            selectInput("year", "Select Year:",
+                        choices = c("All Years", sort(unique(whale_sf$year))),
+                        selected = "All Years"
+            ),
+            selectInput("month", "Select Month:",
+                        choices = c("All Months", month.name),
+                        selected = "All Months"
+            )
+          ),
+          
+          # Conditional UI to select species for Kernel Density map
+          conditionalPanel(
+            condition = "input.map_select == 'Kernel Density'",
+            selectInput("species", "Select Whale Species:",
+                        choices = unique(whale_sf$species),
+                        selected = "All Species"
+            )
+          )
+        ),
+        
+        mainPanel(
+          # Dynamically display the selected map
+          tmapOutput("whale_map")  # Display the selected map
+        )
+      )
+    ),
+
     
     tabPanel(
       tagList(tags$img(src = "clock.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Whale Migration Forecast"), 
@@ -378,72 +606,146 @@ server <- function(input, output) {
     whale_sum_table()
   })
   
+  # Update the available species in the dropdown based on filtered data (reactive)
+  observe({
+    # When the map is changed, we also need to reset the available options
+    if (input$map_select == "Whale Sightings") {
+      # For Map 1, enable all options (species, year, and month)
+      available_species <- unique(whale_sf$species)
+      updateSelectInput(session, "species", choices = c("All Species", available_species))
+      
+      # Update available years based on the data
+      available_years <- sort(unique(whale_sf$year))
+      updateSelectInput(session, "year", choices = c("All Years", available_years))
+      
+      # Update available months (we use full month names)
+      available_months <- month.name
+      updateSelectInput(session, "month", choices = c("All Months", available_months))
+      
+    } else if (input$map_select == "Kernel Density") {
+      # For Map 2, only enable species selection
+      available_species <- unique(whale_sf$species)
+      updateSelectInput(session, "species", choices = c("All Species", available_species))
+      
+      # Disable year and month inputs as they're not required for Map 2
+      updateSelectInput(session, "year", choices = NULL)
+      updateSelectInput(session, "month", choices = NULL)
+    }
+  })
   
-  #Reactive expression for whale map  
+  # Reactive expression for whale map filtering based on selected species, year, and month
   filtered_whale_sf <- reactive({
-    req(input$species, input$year, input$month)
+    req(input$species)  # Ensure that species is selected
     
+    # Handle "All Species" selection
+    if (input$species == "All Species") {
+      species_filter <- TRUE  # All species
+    } else {
+      species_filter <- whale_sf$species == input$species
+    }
     
-    print("Reactive function triggered")  
+    # Filter by year if Map 1 is selected (otherwise, skip year filtering for Map 2)
+    if (input$map_select == "Whale Sightings" && input$year != "All Years") {
+      year_filter <- whale_sf$year == as.numeric(input$year)
+    } else {
+      year_filter <- TRUE  # Include all years if "All Years" is selected
+    }
     
-    # Convert full month name (e.g., "February") to 3-letter format (e.g., "Feb")
-    input_month_abbr <- format(as.Date(paste0("1 ", input$month), "%d %B"), "%b")
+    # Filter by month if Map 1 is selected (otherwise, skip month filtering for Map 2)
+    if (input$map_select == "Whale Sightings" && input$month != "All Months") {
+      month_abbr <- format(as.Date(paste0("1 ", input$month), "%d %B"), "%b")
+      month_filter <- whale_sf$month == month_abbr
+    } else {
+      month_filter <- TRUE  # Include all months if "All Months" is selected
+    }
     
-    # Debug prints
-    print(paste("Converted Month:", input_month_abbr))
-    print(paste("Year Input:", input$year))
-    print(paste("Species selected:", input$species))
+    # Apply the filters and return the filtered data
+    filtered_data <- whale_sf %>%
+      filter(species_filter, year_filter, month_filter)
     
-    # Convert year to numeric if it's not already
-    year_input <- as.numeric(input$year)
-    print(paste("Year input (numeric):", year_input))   # Check the numeric conversion
-    
-    
-    filtered_data <-  whale_sf %>%
-      mutate(month = trimws(month)) %>% 
-      filter(
-        (input$species == "All Species" | species == input$species), 
-        (input$year == "All Years" | year == year_input), 
-        (input$month == "All Months" | month == input_month_abbr)  
-      )
-    
-    print(paste("Filtered data row count:", nrow(filtered_data)))  # Check filtered data row count
-    print(head(filtered_data))  # Preview filtered data
     return(filtered_data)
   })
   
-  
-  #Ensure tmap is in view mode
+  # Ensure tmap is in "view" mode for interactivity
   observe({
     tmap_mode("view")
   })
   
-  # Render tmap
+  # Render whale sightings map based on filtered data for Map 1
   output$whale_map <- renderTmap({
     data <- filtered_whale_sf()
     
+    # Handle case when no data is available after filtering
     if (nrow(data) == 0) {
       showNotification("No data available for the selected filters.", type = "warning")
-      return(NULL)  # Prevents error when data is empty
+      return(NULL)  # Prevent errors when no data is available
     }
     
-    tm_shape(zones_sf) +  # The shapefile data (zones_sf)
-      tm_polygons(
-        col = "lightblue",  # Color for polygons
-        border.col = "darkblue",  # Color for borders
-        alpha = 0.3
-      ) +
-      tm_borders() +  # Add borders for the polygons
-      tm_shape(data) +
-      tm_dots(
-        col = "pink",
-        size = 0.5, 
-        alpha = 0.8,   # Adjust transparency for visibility
-        shape = 21,    # Use a circle with fill
-        border.col = "black",  # Ensure there's an outline
-        border.lwd = 0.5) +
-      tm_basemap(server = "Esri.WorldImagery")  # Add basemap without max.native.zoom
-  })
+    if (input$map_select == "Whale Sightings") {
+      tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+        tm_polygons(col = "lightblue", border.col = "darkblue", alpha = 0.3) +
+        tm_borders() +  # Add borders for polygons
+        tm_shape(data) +  # Whale sightings data
+        tm_dots(col = "pink", size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
+        tm_basemap(server = "Esri.WorldImagery")  # Basemap
+    } else if (input$map_select == "Kernel Density") {
+      
+      # Kernel Density Map logic (for Kernel Density map)
+      # Check the selected species and render the corresponding 75% and 90% HR zones
+      
+      # Humpback Whale Kernel Density Map     
+      if (input$species == "Humpback Whale") {
+        tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+          tm_polygons(col = "lightblue", border.col = "steelblue", alpha = 0.3) +
+          tm_shape(hr_75_humpback_zones) +
+          tm_polygons(col = "steelblue1", border.col = "darkblue", alpha = 0.5) +
+          tm_borders() +
+          tm_shape(hr_90_humpback_zones) +
+          tm_polygons(col = "steelblue3", border.col = "darkblue", alpha = 0.5) +
+          tm_borders() +
+          tm_basemap(server = "Esri.WorldImagery")+
+          tm_add_legend(
+            type = "fill",
+            labels = c("90% Kernel density", "75% Kernel density"),
+            col = c("steelblue1", "steelblue3"))
+      } 
+      
+      # Blue Whale Kernel Density Map  
+      else if (input$species == "Blue Whale") {
+        tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+          tm_polygons(col = "lightblue", border.col = "steelblue", alpha = 0.3) +
+          tm_shape(hr_75_blue_zones) +
+          tm_polygons(col = "steelblue1", border.col = "darkblue", alpha = 0.5) +
+          tm_borders() +
+          tm_shape(hr_90_blue_zones) +
+          tm_polygons(col = "steelblue3", border.col = "darkblue", alpha = 0.5) +
+          tm_borders() +
+          tm_basemap(server = "Esri.WorldImagery")+
+          tm_add_legend(
+            type = "fill",
+            labels = c("90% Kernel density", "75% Kernel density"),
+            col = c("steelblue1", "steelblue3"))
+        
+        
+      } 
+      # Fin Whale Kernel Density Map     
+      else if (input$species == "Fin Whale") {
+        tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+          tm_polygons(fill  = "lightblue", border.col = "steelblue", fill_alpha = 0.3) +
+          tm_shape(hr_75_fin_zones) +
+          tm_polygons(fill = "steelblue1", border.col = "darkblue", fill_alpha = 0.5)+
+          tm_borders() +
+          tm_shape(hr_90_fin_zones) +
+          tm_polygons(fill = "steelblue3", border.col = "darkblue", fill_alpha = 0.5)+
+          tm_borders() +
+          tm_basemap(server = "Esri.WorldImagery") + 
+          tm_add_legend(
+            type = "fill",
+            labels = c("90% Kernel density", "75% Kernel density"),
+            col = c("steelblue1", "steelblue3"))
+     
+      }
+  
 
   # For species selection, filter the data
   filtered_whale_data <- reactive({
@@ -488,8 +790,11 @@ server <- function(input, output) {
       theme_minimal() +
       xlab("Year") + 
       ylab("Total Sightings")
+    
   })
-}
+  }
+
+  
 
 # Run the application 
 shinyApp(ui = ui, server = server)
