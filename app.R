@@ -377,6 +377,55 @@ hr_90_fin_zones <- st_intersection(hr_90_fin_sf_united, zones_combined)
 #hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
 hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
 
+#intersecting whale-sightings with fishing zones
+whale_zones <- st_intersection(whale_sf, zones_sf)
+
+whale_sf <- whale_zones
+
+# Define a color palette for different whale species
+whale_colors <- c("Humpback Whale" = "lightpink",   # Light Pink for Humpback Whale
+                  "Blue Whale" = "#FF3399",       # Medium Pink for Blue Whale
+                  "Fin Whale" = "hotpink3")        # Darker Pink for Fin Whale
+
+
+
+# Simplify and make valid before intersection
+hr_75_blue_zones <- st_simplify(st_make_valid(hr_75_blue_zones))
+hr_75_humpback_zones <- st_simplify(st_make_valid(hr_75_humpback_zones))
+hr_75_fin_zones <- st_simplify(st_make_valid(hr_75_fin_zones))
+
+# Intersect 75% home ranges of blue, humpback, and fin whales
+hr_75_intersection <- st_intersection(hr_75_blue_zones, hr_75_humpback_zones)
+hr_75_intersection <- st_intersection(hr_75_intersection, hr_75_fin_zones)
+
+
+# Step 1: Simplify and make valid the geometries
+hr_90_blue_zones <- st_simplify(st_make_valid(hr_90_blue_zones))
+hr_90_humpback_zones <- st_simplify(st_make_valid(hr_90_humpback_zones))
+hr_90_fin_zones <- st_simplify(st_make_valid(hr_90_fin_zones))
+
+# Step 2: Perform the first intersection between blue and humpback
+hr_90_blue_humpback_intersection <- st_intersection(hr_90_blue_zones, hr_90_humpback_zones)
+
+# Union the result if multiple geometries are returned
+hr_90_blue_humpback_intersection_combined <- st_union(hr_90_blue_humpback_intersection)
+
+# Step 3: Perform the second intersection with Fin Whale zones
+hr_90_intersection <- st_intersection(hr_90_blue_humpback_intersection_combined, hr_90_fin_zones)
+
+#Reproject to a projected CRS (change CRS based on your region!)
+zones_sf_projected <- st_transform(zones_sf, crs = 32610)  # Example: UTM Zone 10N (adjust as needed)
+
+#Calculate area in square meters
+zones_sf_projected$area_m2 <- st_area(zones_sf_projected)
+
+#Convert to square kilometers (1,000,000 m² = 1 km²)
+zones_sf_projected$area_km2 <- as.numeric(zones_sf_projected$area_m2) / 1e6  
+
+#head(shp_projected[, c("area_m2", "area_km2")])
+
+#Reproject back to WGS 84 for mapping
+zones_sf <- st_transform(zones_sf_projected, crs = 4326)
 
 
 # Create the user interface (this is the front end side of the Shiny App)
@@ -490,8 +539,8 @@ ui <- navbarPage(
           conditionalPanel(
             condition = "input.map_select == 'Kernel Density'",
             selectInput("species", "Select Whale Species:",
-                        choices = unique(whale_sf$species),
-                        selected = "All Species"
+                        choices = c("All Species", unique(whale_sf$species),
+                        selected = "All Species")
             )
           )
         ),
@@ -706,12 +755,13 @@ server <- function(input, output, session) {
     }
     
     if (input$map_select == "Whale Sightings") {
-      tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+      tm <- tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
         tm_polygons(col = "lightblue", border.col = "darkblue", alpha = 0.3) +
         tm_borders() +  # Add borders for polygons
         tm_shape(data) +  # Whale sightings data
-        tm_dots(col = "pink", size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
-        tm_basemap(server = "Esri.WorldImagery")  # Basemap
+        tm_dots(col = "species", palette = whale_colors, 
+                size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
+        tm_basemap(server = "Esri.WorldImagery")  # Basemap 
     } else if (input$map_select == "Kernel Density") {
       
       # Kernel Density Map logic (for Kernel Density map)
@@ -767,6 +817,24 @@ server <- function(input, output, session) {
             type = "fill",
             labels = c("90% Kernel density", "75% Kernel density"),
             col = c("steelblue1", "steelblue3"))
+      } 
+        
+          # Intersection Kernel Density Map (3 species)  
+        else if (input$species == "All Species") {
+          tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+            tm_polygons(fill  = "lightblue", border.col = "steelblue", fill_alpha = 0.3) +
+            tm_shape(hr_75_intersection) +
+            tm_polygons(fill = "steelblue1", border.col = "darkblue", fill_alpha = 0.5)+
+            tm_borders() +
+            tm_shape(hr_90_intersection) +
+            tm_polygons(fill = "steelblue3", border.col = "darkblue", fill_alpha = 0.5)+
+            tm_borders() +
+            tm_basemap(server = "Esri.WorldImagery") + 
+            tm_add_legend(
+              type = "fill",
+              labels = c("90% Kernel density", "75% Kernel density"),
+              col = c("steelblue1", "steelblue3"))
+          
       
     }
   }  

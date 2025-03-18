@@ -698,7 +698,49 @@ tmap_mode("view")
         col = c("lightblue", "hotpink"))
 ```
 
+# Calculating home ranges
+# Humpback Whale
+
 ```{r}
+
+hr_90_humpback_zones_sf <- st_transform(hr_90_humpback_zones, crs = 32611)  
+hr_75_humpback_zones_sf <- st_transform(hr_75_humpback_zones, crs = 32611)  
+
+# Calculate area in sq. kilometers by dividing by 1,000,000 b/c UTM is sq. meters
+area_hr90_humpback <- as.numeric(st_area(hr_90_humpback_zones_sf)) / 1000000
+area_hr90_humpback  # 90% Total home range area
+
+area_hr75_humpback <- as.numeric(st_area(hr_75_humpback_zones_sf)) / 1000000
+area_hr75_humpback # 75% Total home range area
+
+```
+
+# Blue Whale 
+```{r}
+hr_90_blue_zones_sf <- st_transform(hr_90_blue_zones, crs = 32611)  
+hr_75_blue_zones_sf <- st_transform(hr_75_blue_zones, crs = 32611)  
+
+# Calculate area in sq. kilometers by dividing by 1,000,000 b/c UTM is sq. meters
+area_hr90_blue <- as.numeric(st_area(hr_90_blue_zones_sf)) / 1000000
+area_hr90_blue  # 90% Total home range area
+
+area_hr75_blue <- as.numeric(st_area(hr_75_blue_zones_sf)) / 1000000
+area_hr75_blue # 75% Total home range area
+
+```
+
+# Fin Whale 
+```{r}
+
+hr_90_fin_zones_sf <- st_transform(hr_90_fin_zones, crs = 32611)  
+hr_75_fin_zones_sf <- st_transform(hr_75_fin_zones, crs = 32611)  
+
+# Calculate area in sq. kilometers by dividing by 1,000,000 b/c UTM is sq. meters
+area_hr90_fin <- as.numeric(st_area(hr_90_fin_zones_sf)) / 1000000
+area_hr90_fin  # 90% Total home range area
+
+area_hr75_fin <- as.numeric(st_area(hr_75_fin_zones_sf)) / 1000000
+area_hr75_fin # 75% Total home range area
 
 ```
 

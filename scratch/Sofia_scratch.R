@@ -267,6 +267,30 @@ whale_colors <- c("Humpback Whale" = "lightpink",   # Light Pink for Humpback Wh
                   "Blue Whale" = "#FF3399",       # Medium Pink for Blue Whale
                   "Fin Whale" = "hotpink3")        # Darker Pink for Fin Whale
 
+# Simplify and make valid before intersection
+hr_75_blue_zones <- st_simplify(st_make_valid(hr_75_blue_zones))
+hr_75_humpback_zones <- st_simplify(st_make_valid(hr_75_humpback_zones))
+hr_75_fin_zones <- st_simplify(st_make_valid(hr_75_fin_zones))
+
+# Intersect 75% home ranges of blue, humpback, and fin whales
+hr_75_intersection <- st_intersection(hr_75_blue_zones, hr_75_humpback_zones)
+hr_75_intersection <- st_intersection(hr_75_intersection, hr_75_fin_zones)
+
+
+# Step 1: Simplify and make valid the geometries
+hr_90_blue_zones <- st_simplify(st_make_valid(hr_90_blue_zones))
+hr_90_humpback_zones <- st_simplify(st_make_valid(hr_90_humpback_zones))
+hr_90_fin_zones <- st_simplify(st_make_valid(hr_90_fin_zones))
+
+# Step 2: Perform the first intersection between blue and humpback
+hr_90_blue_humpback_intersection <- st_intersection(hr_90_blue_zones, hr_90_humpback_zones)
+
+# Union the result if multiple geometries are returned
+hr_90_blue_humpback_intersection_combined <- st_union(hr_90_blue_humpback_intersection)
+
+# Step 3: Perform the second intersection with Fin Whale zones
+hr_90_intersection <- st_intersection(hr_90_blue_humpback_intersection_combined, hr_90_fin_zones)
+
 
 # Create the user interface (this is the front end side of the Shiny App)
 ui <- fluidPage(
@@ -351,8 +375,8 @@ ui <- fluidPage(
                  conditionalPanel(
                    condition = "input.map_select == 'Kernel Density'",
                    selectInput("species", "Select Whale Species:",
-                               choices = unique(whale_sf$species),
-                               selected = "All Species"
+                               choices = c("All Species", unique(whale_sf$species),
+                               selected = "All Species")
                    )
                  )
                ),
@@ -402,8 +426,8 @@ ui <- fluidPage(
              p("*Here have the contact info for relevant people*")
     ) 
   )
-)
 
+)
 
 # Create the server function 
 server <- function(input, output, session) {
@@ -627,6 +651,28 @@ server <- function(input, output, session) {
               type = "fill",
               labels = c("90% Kernel density", "75% Kernel density"),
               col = c("steelblue1", "steelblue3"))
+          
+        } 
+        
+        # Intersection Kernel Density Map (3 species)  
+        else if (input$species == "All Species") {
+          tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+            tm_polygons(fill  = "lightblue", border.col = "steelblue", fill_alpha = 0.3) +
+            tm_shape(hr_75_intersection) +
+            tm_polygons(fill = "steelblue1", border.col = "darkblue", fill_alpha = 0.5)+
+            tm_borders() +
+            tm_shape(hr_90_intersection) +
+            tm_polygons(fill = "steelblue3", border.col = "darkblue", fill_alpha = 0.5)+
+            tm_borders() +
+            tm_basemap(server = "Esri.WorldImagery") + 
+            tm_add_legend(
+              type = "fill",
+              labels = c("90% Kernel density", "75% Kernel density"),
+              col = c("steelblue1", "steelblue3"))
+          
+        
+        
+        
         }
       }
     })
