@@ -432,7 +432,7 @@ zones_sf <- st_transform(zones_sf_projected, crs = 4326)
 ui <- navbarPage(
   title = div(style = "color: white; font-weight: bold; font-size: 60px",
               "Whale Alert - Endangered Species Monitoring", 
-              tags$img(src = "noaa_logo.png", height = "100px", width = "100px",  style = "margin-left: 50px;")), 
+              tags$img(src = "noaa_logo.png", height = "120px", width = "120px",  style = "margin-left: 50px;")), 
   theme = bslib::bs_theme(bootswatch = "flatly", primary = "#1874CD"), 
   
   # Add custom CSS for background color and other styling
@@ -477,9 +477,10 @@ ui <- navbarPage(
         p("This dataset was provided to us by Anastasia Kunz, a NOAA affiliate, and details spatial whale sighting data over time across California. 
            Whale Alert is a citizen science database, and therefore requires extensive cleaning and review before its use. 
            The relevant columns for this Shiny App include the X, Y position of the whale observation, 
-           the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time."),
-        h3("App Spatial Extent"), 
-        tags$img(src = "map.png", height = "450", width = "350", style = "margin-top: 10px;") # Adjust the margin-top to move the image down
+           the date and time of the whale sighting, the whale alert species, and the number of sighted individuals per single record time. 
+          The map below details the six RAMP fishing zones and spatial range of the California State Waters."),
+        h3(""), 
+        tags$img(src = "map.png", height = "450", width = "400", style = "margin-top: 10px;") # Adjust the margin-top to move the image down
       )
     ), 
     
@@ -499,8 +500,8 @@ ui <- navbarPage(
           tableOutput(outputId = "whale_sum_table"), 
         ), 
         mainPanel(
-          plotOutput(outputId = "whale_plot", height = "500px"), 
-          plotOutput(outputId = "whale_plot2", height = "500px"), 
+          plotOutput(outputId = "whale_plot", height = "420px"), 
+          plotOutput(outputId = "whale_plot2", height = "420px"), 
           plotOutput(outputId = "whale_season_plot") 
         )
       )
@@ -592,7 +593,7 @@ ui <- navbarPage(
         a("Whale Alert Smartphone App Flyer", 
           href = "https://media.fisheries.noaa.gov/dam-migration/whale-alert-smartphone-app-flier.pdf", 
           target = "_blank"), 
-        tags$img(src = "humpback.jpg", height = "300px", width = "600px",  style = "margin-top: 30px;"))
+        tags$img(src = "humpback.jpg", height = "300px", width = "650px",  style = "margin-top: 30px;"))
     )
   )
 )
@@ -633,7 +634,7 @@ server <- function(input, output, session) {
         scale_x_continuous(breaks = seq(min(whale_select()$year), max(whale_select()$year), by = 1)) + 
         theme(
           panel.border = element_rect(color = "dodgerblue4", size = 1.2), 
-          plot.title = element_text( size = 16) # Border color for the plot
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5) # Bold and centered title
         )
       
     } else if (input$time_series == "Monthly") {
@@ -649,10 +650,11 @@ server <- function(input, output, session) {
         theme_minimal() +
         theme(
           axis.text.x = element_text(angle = 45, hjust = 1), 
-          plot.title = element_text(size = 16) # Border color for the plot
-        ) 
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5) # Bold and centered title
+        )
     }
   })
+  
   
   
   
