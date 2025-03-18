@@ -541,7 +541,7 @@ ui <- navbarPage(
             condition = "input.map_select == 'Kernel Density'",
             selectInput("species", "Select Whale Species:",
                         choices = c("All Species", unique(whale_sf$species),
-                                    selected = "All Species")
+                                    selected = "Fin Whale")
             )
           )
         ),
