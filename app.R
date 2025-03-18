@@ -540,8 +540,8 @@ ui <- navbarPage(
           conditionalPanel(
             condition = "input.map_select == 'Kernel Density'",
             selectInput("species", "Select Whale Species:",
-                        choices = c("All Species", unique(whale_sf$species),
-                                    selected = "Fin Whale")
+                        choices = c("All Species", unique(whale_sf$species)),
+                        selected = "Blue Whale"  # Set default to "Humpback Whale"
             )
           )
         ),
@@ -551,7 +551,7 @@ ui <- navbarPage(
           tmapOutput("whale_map")  # Display the selected map
         )
       )
-    ),
+    ), 
     
     tabPanel(
       tagList(tags$img(src = "clock.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Whale Migration Forecast"), 
@@ -582,6 +582,7 @@ ui <- navbarPage(
         a("Reduce Whale Strikes - Top 5 Things You Should Know", 
           href = "https://media.fisheries.noaa.gov/dam-migration/reduce-whale-strikes-top5things.pdf", 
           target = "_blank"), 
+        br(),
         
         
         p("Learn more about whales on the Ocean.org website:"),
@@ -748,6 +749,7 @@ server <- function(input, output, session) {
   
   # Render whale sightings map based on filtered data for Map 1
   output$whale_map <- renderTmap({
+    tmap_options(check.and.fix = TRUE)
     data <- filtered_whale_sf()
     
     # Handle case when no data is available after filtering
