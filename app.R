@@ -377,13 +377,62 @@ hr_90_fin_zones <- st_intersection(hr_90_fin_sf_united, zones_combined)
 #hr_75_fin_zones <- st_make_valid(hr_75_fin_zones)
 hr_75_fin_zones <- st_intersection(hr_75_fin_sf_united, zones_combined)
 
+#intersecting whale-sightings with fishing zones
+whale_zones <- st_intersection(whale_sf, zones_sf)
+
+whale_sf <- whale_zones
+
+# Define a color palette for different whale species
+whale_colors <- c("Humpback Whale" = "lightpink",   # Light Pink for Humpback Whale
+                  "Blue Whale" = "#FF3399",       # Medium Pink for Blue Whale
+                  "Fin Whale" = "hotpink3")        # Darker Pink for Fin Whale
+
+
+
+# Simplify and make valid before intersection
+hr_75_blue_zones <- st_simplify(st_make_valid(hr_75_blue_zones))
+hr_75_humpback_zones <- st_simplify(st_make_valid(hr_75_humpback_zones))
+hr_75_fin_zones <- st_simplify(st_make_valid(hr_75_fin_zones))
+
+# Intersect 75% home ranges of blue, humpback, and fin whales
+hr_75_intersection <- st_intersection(hr_75_blue_zones, hr_75_humpback_zones)
+hr_75_intersection <- st_intersection(hr_75_intersection, hr_75_fin_zones)
+
+
+# Step 1: Simplify and make valid the geometries
+hr_90_blue_zones <- st_simplify(st_make_valid(hr_90_blue_zones))
+hr_90_humpback_zones <- st_simplify(st_make_valid(hr_90_humpback_zones))
+hr_90_fin_zones <- st_simplify(st_make_valid(hr_90_fin_zones))
+
+# Step 2: Perform the first intersection between blue and humpback
+hr_90_blue_humpback_intersection <- st_intersection(hr_90_blue_zones, hr_90_humpback_zones)
+
+# Union the result if multiple geometries are returned
+hr_90_blue_humpback_intersection_combined <- st_union(hr_90_blue_humpback_intersection)
+
+# Step 3: Perform the second intersection with Fin Whale zones
+hr_90_intersection <- st_intersection(hr_90_blue_humpback_intersection_combined, hr_90_fin_zones)
+
+#Reproject to a projected CRS (change CRS based on your region!)
+zones_sf_projected <- st_transform(zones_sf, crs = 32610)  # Example: UTM Zone 10N (adjust as needed)
+
+#Calculate area in square meters
+zones_sf_projected$area_m2 <- st_area(zones_sf_projected)
+
+#Convert to square kilometers (1,000,000 m² = 1 km²)
+zones_sf_projected$area_km2 <- as.numeric(zones_sf_projected$area_m2) / 1e6  
+
+#head(shp_projected[, c("area_m2", "area_km2")])
+
+#Reproject back to WGS 84 for mapping
+zones_sf <- st_transform(zones_sf_projected, crs = 4326)
 
 
 # Create the user interface (this is the front end side of the Shiny App)
 ui <- navbarPage(
   title = div(style = "color: white; font-weight: bold; font-size: 60px",
               "Whale Alert - Endangered Species Monitoring", 
-              tags$img(src = "noaa_logo.png", height = "140px", width = "140px",  style = "margin-left: 50px;")), 
+              tags$img(src = "noaa_logo.png", height = "100px", width = "100px",  style = "margin-left: 50px;")), 
   theme = bslib::bs_theme(bootswatch = "flatly", primary = "#1874CD"), 
   
   # Add custom CSS for background color and other styling
@@ -432,29 +481,29 @@ ui <- navbarPage(
         h3("App Spatial Extent"), 
         tags$img(src = "map.png", height = "450", width = "350", style = "margin-top: 10px;") # Adjust the margin-top to move the image down
       )
-), 
-
+    ), 
+    
     tabPanel(
       tagList(tags$img(src = "sun.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Trends and Seasonality"),  
-             sidebarLayout(
-               sidebarPanel(
-                 radioButtons(
-                   inputId = "whale_species", 
-                   label = "Choose whale species", 
-                   choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  
-                 ),
-                 selectInput(inputId = "time_series",
-                             label = "Choose Time Series View",
-                             choices = c("Annual", "Monthly")),
-                 h3("Summary Statistics"),  
-                 tableOutput(outputId = "whale_sum_table"), 
-               ), 
-               mainPanel(
-                 plotOutput(outputId = "whale_plot", height = "500px"), 
-                 plotOutput(outputId = "whale_plot2", height = "500px"), 
-                 plotOutput(outputId = "whale_season_plot") 
-               )
-             )
+      sidebarLayout(
+        sidebarPanel(
+          radioButtons(
+            inputId = "whale_species", 
+            label = "Choose whale species", 
+            choices = c("Humpback Whale", "Fin Whale", "Blue Whale", "All Species")  
+          ),
+          selectInput(inputId = "time_series",
+                      label = "Choose Time Series View",
+                      choices = c("Annual", "Monthly")),
+          h3("Summary Statistics"),  
+          tableOutput(outputId = "whale_sum_table"), 
+        ), 
+        mainPanel(
+          plotOutput(outputId = "whale_plot", height = "500px"), 
+          plotOutput(outputId = "whale_plot2", height = "500px"), 
+          plotOutput(outputId = "whale_season_plot") 
+        )
+      )
     ),
     
     tabPanel(
@@ -490,8 +539,8 @@ ui <- navbarPage(
           conditionalPanel(
             condition = "input.map_select == 'Kernel Density'",
             selectInput("species", "Select Whale Species:",
-                        choices = unique(whale_sf$species),
-                        selected = "All Species"
+                        choices = c("All Species", unique(whale_sf$species),
+                                    selected = "All Species")
             )
           )
         ),
@@ -502,48 +551,48 @@ ui <- navbarPage(
         )
       )
     ),
-
+    
     tabPanel(
       tagList(tags$img(src = "clock.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Whale Migration Forecast"), 
-             sidebarLayout(
-               sidebarPanel(
-                 radioButtons(inputId = "forecast_species", 
-                              label = "Select Whale Species", 
-                              choices = c("Blue Whale", "Fin Whale", "Humpback Whale"), 
-                              selected = "Blue Whale"),
-                 checkboxInput(inputId = "show_decomposition", 
-                               label = "Show Decomposition", 
-                               value = TRUE)  
-               ),
-               mainPanel(
-                 plotOutput("whale_forecast_plot", height = "500px"),
-                 # Conditional rendering for decomposition plot
-                 conditionalPanel(
-                   condition = "input.show_decomposition == true", 
-                   plotOutput("whale_decomp_plot", height = "500px"))
-               )
-             )
+      sidebarLayout(
+        sidebarPanel(
+          radioButtons(inputId = "forecast_species", 
+                       label = "Select Whale Species", 
+                       choices = c("Blue Whale", "Fin Whale", "Humpback Whale"), 
+                       selected = "Blue Whale"),
+          checkboxInput(inputId = "show_decomposition", 
+                        label = "Show Decomposition", 
+                        value = TRUE)  
+        ),
+        mainPanel(
+          plotOutput("whale_forecast_plot", height = "500px"),
+          # Conditional rendering for decomposition plot
+          conditionalPanel(
+            condition = "input.show_decomposition == true", 
+            plotOutput("whale_decomp_plot", height = "500px"))
+        )
+      )
     ),
     tabPanel(
       tagList(tags$img(src = "whale.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Additional Resources and Links") , 
       tags$div(
         style = "display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;",
-             h4("For more information on reducing whale strikes, check out the following:"),
-             a("Reduce Whale Strikes - Top 5 Things You Should Know", 
-               href = "https://media.fisheries.noaa.gov/dam-migration/reduce-whale-strikes-top5things.pdf", 
-               target = "_blank"), 
+        h4("For more information on reducing whale strikes, check out the following:"),
+        a("Reduce Whale Strikes - Top 5 Things You Should Know", 
+          href = "https://media.fisheries.noaa.gov/dam-migration/reduce-whale-strikes-top5things.pdf", 
+          target = "_blank"), 
         
         
-             p("Learn more about whales on the Ocean.org website:"),
-             a("Whales - Ocean.org", 
-               href = "https://ocean.org/whales/", 
-               target = "_blank"), 
-             br(),
-             p("For more information, check out this Whale Alert Smartphone App flyer:"),
-             a("Whale Alert Smartphone App Flyer", 
-               href = "https://media.fisheries.noaa.gov/dam-migration/whale-alert-smartphone-app-flier.pdf", 
-               target = "_blank"), 
-      tags$img(src = "humpback.jpg", height = "300px", width = "600px",  style = "margin-top: 30px;"))
+        p("Learn more about whales on the Ocean.org website:"),
+        a("Whales - Ocean.org", 
+          href = "https://ocean.org/whales/", 
+          target = "_blank"), 
+        br(),
+        p("For more information, check out this Whale Alert Smartphone App flyer:"),
+        a("Whale Alert Smartphone App Flyer", 
+          href = "https://media.fisheries.noaa.gov/dam-migration/whale-alert-smartphone-app-flier.pdf", 
+          target = "_blank"), 
+        tags$img(src = "humpback.jpg", height = "300px", width = "600px",  style = "margin-top: 30px;"))
     )
   )
 )
@@ -706,12 +755,13 @@ server <- function(input, output, session) {
     }
     
     if (input$map_select == "Whale Sightings") {
-      tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+      tm <- tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
         tm_polygons(col = "lightblue", border.col = "darkblue", alpha = 0.3) +
         tm_borders() +  # Add borders for polygons
         tm_shape(data) +  # Whale sightings data
-        tm_dots(col = "pink", size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
-        tm_basemap(server = "Esri.WorldImagery")  # Basemap
+        tm_dots(col = "species", palette = whale_colors, 
+                size = 0.5, alpha = 0.8, shape = 21, border.col = "black", border.lwd = 0.5) +
+        tm_basemap(server = "Esri.WorldImagery")  # Basemap 
     } else if (input$map_select == "Kernel Density") {
       
       # Kernel Density Map logic (for Kernel Density map)
@@ -767,10 +817,28 @@ server <- function(input, output, session) {
             type = "fill",
             labels = c("90% Kernel density", "75% Kernel density"),
             col = c("steelblue1", "steelblue3"))
+      } 
       
-    }
-  }  
-})
+      # Intersection Kernel Density Map (3 species)  
+      else if (input$species == "All Species") {
+        tm_shape(zones_sf) +  # Background shapefile data (zones_sf)
+          tm_polygons(fill  = "lightblue", border.col = "steelblue", fill_alpha = 0.3) +
+          tm_shape(hr_75_intersection) +
+          tm_polygons(fill = "steelblue1", border.col = "darkblue", fill_alpha = 0.5)+
+          tm_borders() +
+          tm_shape(hr_90_intersection) +
+          tm_polygons(fill = "steelblue3", border.col = "darkblue", fill_alpha = 0.5)+
+          tm_borders() +
+          tm_basemap(server = "Esri.WorldImagery") + 
+          tm_add_legend(
+            type = "fill",
+            labels = c("90% Kernel density", "75% Kernel density"),
+            col = c("steelblue1", "steelblue3"))
+        
+        
+      }
+    }  
+  })
   # For species selection, filter the data
   filtered_whale_data <- reactive({
     if (input$forecast_species == "Blue Whale") {
@@ -803,7 +871,7 @@ server <- function(input, output, session) {
       plot(whale_decomp, main = paste(input$forecast_species, "Sightings - Time Series Decomposition"),
            col.main = "darkblue", col.lab = "darkblue",
            font.main = 1)
-    
+      
     } else {
       NULL  # Don't show the decomposition plot if unchecked
     }
@@ -961,7 +1029,7 @@ server <- function(input, output, session) {
     }
   })
 }
-  
+
 
 # Run the application 
 shinyApp(ui = ui, server = server)
