@@ -10,6 +10,105 @@ library(lubridate)
 library(tseries)
 library(feasts)
 
+
+# Make specific forecasting dataframe
+whale_forecast <- read_csv("data/whale_cleaned.csv")
+
+# Check structure of date columns
+str(whale_forecast$year)
+str(whale_forecast$month) 
+
+# Convert 'month' (factor) to numeric
+whale_forecast$month <- match(whale_forecast$month, month.abb)
+
+# Combine 'year' and 'month' into a date format column
+whale_forecast$date_column <- 
+  as.Date(paste(whale_forecast$year, sprintf("%02d", whale_forecast$month), "01", sep = "-"))
+
+# Split the data by species
+whale_species_split <- whale_forecast %>%
+  group_by(species) 
+
+# Now, aggregate sightings by date for each species
+whale_agg_by_species <- whale_species_split %>%
+  group_by(species, date_column) %>%
+  summarise(total_sightings = sum(number_sighted, na.rm = TRUE), .groups = "drop")
+
+# Convert each species to a tsibble
+whale_blue_tsibble <- whale_agg_by_species %>%
+  filter(species == "Blue Whale") %>%
+  mutate(date_column = lubridate::ymd(date_column)) %>%
+  as_tsibble(key = NULL, index = date_column)
+
+whale_fin_tsibble <- whale_agg_by_species %>%
+  filter(species == "Fin Whale") %>%
+  mutate(date_column = lubridate::ymd(date_column)) %>%
+  as_tsibble(key = NULL, index = date_column)
+
+whale_hump_tsibble <- whale_agg_by_species %>%
+  filter(species == "Humpback Whale") %>%
+  mutate(date_column = lubridate::ymd(date_column)) %>%
+  as_tsibble(key = NULL, index = date_column)
+
+# Convert tsibbles to tibbles and add species column
+whale_blue_df <- as_tibble(whale_blue_tsibble) %>% mutate(species = "Blue Whale")
+whale_fin_df <- as_tibble(whale_fin_tsibble) %>% mutate(species = "Fin Whale")
+whale_hump_df <- as_tibble(whale_hump_tsibble) %>% mutate(species = "Humpback Whale")
+
+# Combine all species data into one data frame
+whale_combined <- bind_rows(whale_blue_df, whale_fin_df, whale_hump_df)
+
+# Extract year and month from date_column and create new columns for faceting
+whale_combined <- whale_combined %>%
+  mutate(year = year(date_column),
+         month = month(date_column, label = TRUE))
+
+# Blue Whales: Aggregate sightings by month and year
+whale_blue_agg <- whale_blue_df |>
+  group_by(date_column) |>
+  summarise(total_sightings = sum(total_sightings, na.rm = TRUE))
+
+# Convert to tsibble
+whale_blue_tsibble <- whale_blue_agg %>%
+  as_tsibble(index = date_column)
+
+# Fin Whales: Aggregate sightings by month and year
+whale_fin_agg <- whale_fin_df |>
+  group_by(date_column) |>
+  summarise(total_sightings = sum(total_sightings, na.rm = TRUE))
+
+# Humpback Whales: Aggregate sightings by month and year
+whale_hump_agg <- whale_hump_df |>
+  group_by(date_column) |>
+  summarise(total_sightings = sum(total_sightings, na.rm = TRUE))
+
+# Aggregate sightings across all species by date
+whale_combined_agg <- whale_combined %>%
+  group_by(date_column) %>%
+  summarise(total_sightings = sum(total_sightings, na.rm = TRUE), .groups = "drop")
+
+
+# Convert to time series objects
+whale_blue_ts <- ts(whale_blue_agg$total_sightings, 
+                    start = c(2014, 1), 
+                    end = c(2024, 12), 
+                    frequency = 12)
+
+whale_fin_ts <- ts(whale_fin_agg$total_sightings, 
+                   start = c(2014, 1), 
+                   end = c(2024, 12), 
+                   frequency = 12)
+
+whale_hump_ts <- ts(whale_hump_agg$total_sightings, 
+                    start = c(2014, 1), 
+                    end = c(2024, 12), 
+                    frequency = 12)
+
+whale_combined_ts <- ts(whale_combined_agg$total_sightings, 
+                        start = c(2014, 1), 
+                        end = c(2024, 12), 
+                        frequency = 12)
+
 # Function to handle zero values
 replace_zeros <- function(ts_data) {
   ts_data[ts_data == 0] <- 0.1
@@ -29,15 +128,15 @@ whale_hump_decomp <- decompose(whale_hump_ts_clean, type = "multiplicative")
 
 # Plot improved decomposition components
 autoplot(whale_blue_decomp) + 
-  ggtitle("Multiplicative Decomposition of Blue Whale Sightings") +
+  ggtitle("Decomposition of Blue Whale Sightings") +
   theme_minimal()
 
 autoplot(whale_fin_decomp) + 
-  ggtitle("Multiplicative Decomposition of Fin Whale Sightings") +
+  ggtitle("Decomposition of Fin Whale Sightings") +
   theme_minimal()
 
 autoplot(whale_hump_decomp) + 
-  ggtitle("Multiplicative Decomposition of Humpback Whale Sightings") +
+  ggtitle("Decomposition of Humpback Whale Sightings") +
   theme_minimal()
 
 # Create training and test sets for seasonal naive method (using 80% for training)
@@ -68,50 +167,43 @@ create_train_test <- function(ts_data, species_name) {
   # Calculate accuracy measures
   accuracy_metrics <- accuracy(forecast_obj, test)
   
-  # Plot the forecast with actual test data and confidence intervals
-  p <- autoplot(train) +
-    autolayer(forecast_obj, series = "Forecast", PI = TRUE) +
-    autolayer(test, series = "Actual") +
-    ggtitle(paste("Forecast vs Actual -", species_name, "Sightings")) +
-    xlab("Year") + 
-    ylab("Total Sightings") +
-    scale_color_manual(name = "Series", 
-                       values = c("Forecast" = "blue", "Actual" = "red")) +
-    scale_fill_manual(name = "Confidence Level", 
-                      values = c("70%" = "skyblue3", "85%" = "skyblue1")) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
-  
   return(list(
     train = train,
     test = test,
     forecast = forecast_obj,
-    accuracy = accuracy_metrics,
-    plot = p
+    accuracy = accuracy_metrics
   ))
 }
 
-# Add this function for ARIMA forecasting with train/test split
+# Modified function to use most recent 8 years for training
 create_train_test_arima <- function(ts_data, species_name) {
-  train_end <- floor(length(ts_data) * 0.8)
-  # Calculate years and months for windowing
-  start_year <- 2014
-  train_end_year <- start_year + train_end %/% 12
-  train_end_month <- train_end %% 12
+  # Get the time series start and end dates
+  ts_start <- start(ts_data)
+  ts_end <- end(ts_data)
+  
+  # Calculate total years of data
+  start_year <- ts_start[1]
+  start_month <- ts_start[2]
+  end_year <- ts_end[1]
+  end_month <- ts_end[2]
+  
+  # Calculate test start date (2 years before end)
+  test_start_year <- end_year - 2
+  test_start_month <- end_month
+  
+  # Set train end date to month before test start
+  train_end_year <- test_start_year
+  train_end_month <- test_start_month - 1
+  
+  # Handle month rollover if needed
   if(train_end_month == 0) {
     train_end_month <- 12
     train_end_year <- train_end_year - 1
   }
   
-  test_start_year <- train_end_year
-  test_start_month <- train_end_month + 1
-  if(test_start_month > 12) {
-    test_start_month <- 1
-    test_start_year <- test_start_year + 1
-  }
-  
-  train <- window(ts_data, end = c(train_end_year, train_end_month))
-  test <- window(ts_data, start = c(test_start_year, test_start_month))
+  # Create train and test windows
+  train <- window(ts_data, start = c(start_year, start_month), end = c(train_end_year, train_end_month))
+  test <- window(ts_data, start = c(test_start_year, test_start_month), end = c(end_year, end_month))
   
   # Auto-select ARIMA model
   fit <- auto.arima(train, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
@@ -126,44 +218,126 @@ create_train_test_arima <- function(ts_data, species_name) {
   print(paste("ARIMA Model for", species_name))
   print(summary(fit))
   
-  # Plot the forecast with actual test data and confidence intervals
-  p <- autoplot(train) +
-    autolayer(forecast_obj, series = "Forecast", PI = TRUE) +
-    autolayer(test, series = "Actual") +
-    ggtitle(paste("ARIMA Forecast vs Actual -", species_name, "Sightings")) +
-    xlab("Year") + 
-    ylab("Total Sightings") +
-    scale_color_manual(name = "Series", 
-                       values = c("Forecast" = "blue", "Actual" = "red")) +
-    scale_fill_manual(name = "Confidence Level", 
-                      values = c("70%" = "skyblue3", "85%" = "skyblue1")) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
-  
   return(list(
     train = train,
     test = test,
     model = fit,
     forecast = forecast_obj,
-    accuracy = accuracy_metrics,
-    plot = p
+    accuracy = accuracy_metrics
   ))
 }
+
+# Modified function for seasonal naive with same training/testing approach
+create_train_test <- function(ts_data, species_name) {
+  # Get the time series start and end dates
+  ts_start <- start(ts_data)
+  ts_end <- end(ts_data)
+  
+  # Calculate total years of data
+  start_year <- ts_start[1]
+  start_month <- ts_start[2]
+  end_year <- ts_end[1]
+  end_month <- ts_end[2]
+  
+  # Calculate test start date (2 years before end)
+  test_start_year <- end_year - 2
+  test_start_month <- end_month
+  
+  # Set train end date to month before test start
+  train_end_year <- test_start_year
+  train_end_month <- test_start_month - 1
+  
+  # Handle month rollover if needed
+  if(train_end_month == 0) {
+    train_end_month <- 12
+    train_end_year <- train_end_year - 1
+  }
+  
+  # Create train and test windows
+  train <- window(ts_data, start = c(start_year, start_month), end = c(train_end_year, train_end_month))
+  test <- window(ts_data, start = c(test_start_year, test_start_month), end = c(end_year, end_month))
+  
+  # Create forecast with seasonal naive method
+  forecast_obj <- snaive(train, h = length(test), level = c(70, 85))
+  
+  # Calculate accuracy measures
+  accuracy_metrics <- accuracy(forecast_obj, test)
+  
+  return(list(
+    train = train,
+    test = test,
+    forecast = forecast_obj,
+    accuracy = accuracy_metrics
+  ))
+}
+
+# After running these functions, verify the split
+blue_analysis <- create_train_test(whale_blue_ts_clean, "Blue Whale")
+print(paste("Training data from:", start(blue_analysis$train)[1], start(blue_analysis$train)[2], 
+            "to", end(blue_analysis$train)[1], end(blue_analysis$train)[2]))
+print(paste("Testing data from:", start(blue_analysis$test)[1], start(blue_analysis$test)[2], 
+            "to", end(blue_analysis$test)[1], end(blue_analysis$test)[2]))
 
 # Function for seasonal naive forecasting of future periods
 forecast_future <- function(ts_data, species_name, h = 36) {
   # Create forecast with 70% and 85% confidence intervals
   forecast_obj <- snaive(ts_data, h = h, level = c(70, 85))
   
-  # Plot the forecast with confidence intervals
-  p <- autoplot(forecast_obj) + 
-    ggtitle(paste("Seasonal Naive Forecast for", species_name, "Sightings")) +
+  # Extract forecast data for custom plotting
+  fc_data <- as.data.frame(forecast_obj)
+  
+  # Get time information for proper x-axis
+  time_info <- time(forecast_obj$mean)
+  fc_data$time <- as.numeric(time(forecast_obj$mean))
+  
+  # Plot with ggplot2 for more control
+  p <- ggplot() +
+    # Plot historical data
+    geom_line(data = as.data.frame(ts_data), 
+              aes(x = as.numeric(time(ts_data)), y = x, color = "Historical"), 
+              size = 0.5) +
+    # Add 85% confidence interval - force minimum to 0
+    geom_ribbon(data = fc_data, 
+                aes(x = time, 
+                    ymin = pmax(0, `Lo 85`), 
+                    ymax = `Hi 85`, 
+                    fill = "85% CI"),
+                alpha = 0.3) +
+    # Add 70% confidence interval - force minimum to 0
+    geom_ribbon(data = fc_data, 
+                aes(x = time, 
+                    ymin = pmax(0, `Lo 70`), 
+                    ymax = `Hi 70`, 
+                    fill = "70% CI"),
+                alpha = 0.5) +
+    # Add forecast line
+    geom_line(data = fc_data, 
+              aes(x = time, y = `Point Forecast`, color = "Forecast"), 
+              size = 0.5) +
+    # Customize labels
+    ggtitle(paste("Forecast for", species_name, "Sightings")) +
     xlab("Year") + 
     ylab("Total Sightings") +
-    scale_fill_manual(name = "Confidence Level", 
-                      values = c("70%" = "skyblue3", "85%" = "skyblue1")) +
+    # Define color and fill scales with explicit legends
+    scale_color_manual(name = "Series",
+                       values = c("Historical" = "black", "Forecast" = "#593527FF")) +
+    scale_fill_manual(name = "Confidence Interval",
+                      values = c("85% CI" = "#89B7CFFF", "70% CI" = "#5C92B4FF")) +
+    # Force y-axis to start at 0
+    scale_y_continuous(limits = c(0, NA)) +
+    # Improve theme
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.title = element_text(face = "bold"),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    # Ensure both legend items appear
+    guides(
+      color = guide_legend(order = 1),
+      fill = guide_legend(order = 2)
+    )
   
   return(list(
     forecast = forecast_obj,
@@ -171,7 +345,7 @@ forecast_future <- function(ts_data, species_name, h = 36) {
   ))
 }
 
-# Add this function for ARIMA future forecasting
+# ARIMA version with the same improvements
 forecast_future_arima <- function(ts_data, species_name, h = 36) {
   # Auto-select ARIMA model
   fit <- auto.arima(ts_data, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
@@ -183,15 +357,61 @@ forecast_future_arima <- function(ts_data, species_name, h = 36) {
   print(paste("ARIMA Model for", species_name, "Future Forecast"))
   print(summary(fit))
   
-  # Plot the forecast with confidence intervals
-  p <- autoplot(forecast_obj) + 
-    ggtitle(paste("ARIMA Forecast for", species_name, "Sightings")) +
+  # Extract forecast data for custom plotting
+  fc_data <- as.data.frame(forecast_obj)
+  
+  # Get time information for proper x-axis
+  time_info <- time(forecast_obj$mean)
+  fc_data$time <- as.numeric(time(forecast_obj$mean))
+  
+  # Plot with ggplot2 for more control
+  p <- ggplot() +
+    # Plot historical data
+    geom_line(data = as.data.frame(ts_data), 
+              aes(x = as.numeric(time(ts_data)), y = x, color = "Historical"), 
+              size = 0.5) +
+    # Add 85% confidence interval - force minimum to 0
+    geom_ribbon(data = fc_data, 
+                aes(x = time, 
+                    ymin = pmax(0, `Lo 85`), 
+                    ymax = `Hi 85`, 
+                    fill = "85% CI"),
+                alpha = 0.3) +
+    # Add 70% confidence interval - force minimum to 0
+    geom_ribbon(data = fc_data, 
+                aes(x = time, 
+                    ymin = pmax(0, `Lo 70`), 
+                    ymax = `Hi 70`, 
+                    fill = "70% CI"),
+                alpha = 0.5) +
+    # Add forecast line
+    geom_line(data = fc_data, 
+              aes(x = time, y = `Point Forecast`, color = "Forecast"), 
+              size = 0.5) +
+    # Customize labels
+    ggtitle(paste("Forecast for", species_name, "Sightings")) +
     xlab("Year") + 
     ylab("Total Sightings") +
-    scale_fill_manual(name = "Confidence Level", 
-                      values = c("70%" = "skyblue3", "85%" = "skyblue1")) +
+    # Define color and fill scales with explicit legends
+    scale_color_manual(name = "Series",
+                       values = c("Historical" = "black", "Forecast" = "#593527FF")) +
+    scale_fill_manual(name = "Confidence Interval",
+                      values = c("85% CI" = "#89B7CFFF", "70% CI" = "#5C92B4FF")) +
+    # Force y-axis to start at 0
+    scale_y_continuous(limits = c(0, NA)) +
+    # Improve theme
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.title = element_text(face = "bold"),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    # Ensure both legend items appear
+    guides(
+      color = guide_legend(order = 1),
+      fill = guide_legend(order = 2)
+    )
   
   return(list(
     model = fit,
@@ -200,87 +420,33 @@ forecast_future_arima <- function(ts_data, species_name, h = 36) {
   ))
 }
 
-# Apply analysis to each species
-blue_analysis <- create_train_test(whale_blue_ts_clean, "Blue Whale")
-fin_analysis <- create_train_test(whale_fin_ts_clean, "Fin Whale")
-# Use ARIMA for Humpback Whales instead of snaive
-hump_analysis <- create_train_test_arima(whale_hump_ts_clean, "Humpback Whale")
-combined_analysis <- create_train_test(whale_combined_ts_clean, "All Whale")
+# Modify decomposition plots
+plot_decomp_with_min_zero <- function(decomp_obj, title) {
+  p <- autoplot(decomp_obj) +
+    ggtitle(title) +
+    theme_minimal()
+  
+  # Extract the grobs and modify the y-axis limits for the data panel only
+  p_build <- ggplot_build(p)
+  p_build$layout$panel_params[[1]]$y.range[1] <- 0  # Set minimum y to 0 for first panel
+  
+  return(p)
+}
 
-# View accuracy metrics
-print("Blue Whale Accuracy Metrics:")
-print(blue_analysis$accuracy)
+# Apply to decomposition plots
+blue_decomp_plot <- plot_decomp_with_min_zero(whale_blue_decomp, 
+                                              "Decomposition of Blue Whale Sightings")
+fin_decomp_plot <- plot_decomp_with_min_zero(whale_fin_decomp, 
+                                             "Decomposition of Fin Whale Sightings")
+hump_decomp_plot <- plot_decomp_with_min_zero(whale_hump_decomp, 
+                                              "Decomposition of Humpback Whale Sightings")
 
-print("Fin Whale Accuracy Metrics:")
-print(fin_analysis$accuracy)
-
-print("Humpback Whale ARIMA Accuracy Metrics:")
-print(hump_analysis$accuracy)
-
-print("Combined Whale Accuracy Metrics:")
-print(combined_analysis$accuracy)
-
-# Display plots
-blue_analysis$plot
-fin_analysis$plot
-hump_analysis$plot
-combined_analysis$plot
-
-# Create future forecasts
+# Create future forecasts with fixed y-axis
 blue_future <- forecast_future(whale_blue_ts_clean, "Blue Whale")
 fin_future <- forecast_future(whale_fin_ts_clean, "Fin Whale")
-# Use ARIMA for Humpback Whales future forecast
 hump_future <- forecast_future_arima(whale_hump_ts_clean, "Humpback Whale")
-combined_future <- forecast_future(whale_combined_ts_clean, "All Whale")
 
 # Display future forecast plots
 blue_future$plot
 fin_future$plot
 hump_future$plot
-combined_future$plot
-
-# Compare seasonal naive and ARIMA for Humpback Whales
-# This allows us to see if ARIMA is truly better
-hump_snaive_analysis <- create_train_test(whale_hump_ts_clean, "Humpback Whale")
-print("Humpback Whale Accuracy Metrics (Seasonal Naive for comparison):")
-print(hump_snaive_analysis$accuracy)
-
-# Create a comparison plot
-comparison_plot <- ggplot() +
-  geom_line(data = as.data.frame(hump_analysis$test), 
-            aes(x = time(hump_analysis$test), y = hump_analysis$test, color = "Actual")) +
-  geom_line(data = as.data.frame(hump_analysis$forecast$mean), 
-            aes(x = time(hump_analysis$forecast$mean), y = hump_analysis$forecast$mean, color = "ARIMA")) +
-  geom_line(data = as.data.frame(hump_snaive_analysis$forecast$mean), 
-            aes(x = time(hump_snaive_analysis$forecast$mean), y = hump_snaive_analysis$forecast$mean, color = "Seasonal Naive")) +
-  ggtitle("Humpback Whale Forecast Comparison") +
-  xlab("Year") + 
-  ylab("Total Sightings") +
-  scale_color_manual(name = "Model", 
-                     values = c("Actual" = "black", "ARIMA" = "blue", "Seasonal Naive" = "red")) +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-
-comparison_plot
-
-# Seasonal patterns analysis
-# Convert time series to tsibble for better seasonal analysis
-whale_blue_tsbl <- as_tsibble(whale_blue_ts_clean)
-whale_fin_tsbl <- as_tsibble(whale_fin_ts_clean)
-whale_hump_tsbl <- as_tsibble(whale_hump_ts_clean)
-
-# Seasonal plots
-whale_blue_tsbl %>%
-  gg_season(value) +
-  ggtitle("Seasonal Plot: Blue Whale Sightings") +
-  theme_minimal()
-
-whale_fin_tsbl %>%
-  gg_season(value) +
-  ggtitle("Seasonal Plot: Fin Whale Sightings") +
-  theme_minimal()
-
-whale_hump_tsbl %>%
-  gg_season(value) +
-  ggtitle("Seasonal Plot: Humpback Whale Sightings") +
-  theme_minimal()
