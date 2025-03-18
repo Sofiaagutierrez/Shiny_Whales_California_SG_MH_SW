@@ -119,6 +119,7 @@ whale_combined_agg <- whale_combined %>%
   group_by(date_column) %>%
   summarise(total_sightings = sum(total_sightings, na.rm = TRUE), .groups = "drop")
 
+
 # Convert to time series objects
 whale_blue_ts <- ts(whale_blue_agg$total_sightings, 
                     start = c(2014, 1), 
@@ -140,10 +141,22 @@ whale_combined_ts <- ts(whale_combined_agg$total_sightings,
                         end = c(2024, 12), 
                         frequency = 12)
 
-# Decompose the time series
-whale_blue_decomp <- decompose(whale_blue_ts)
-whale_fin_decomp <- decompose(whale_fin_ts)
-whale_hump_decomp <- decompose(whale_hump_ts)
+# Function to handle zero values
+replace_zeros <- function(ts_data) {
+  ts_data[ts_data == 0] <- 0.1
+  return(ts_data)
+}
+
+# Apply zero handling to original time series
+whale_blue_ts_clean <- replace_zeros(whale_blue_ts)
+whale_fin_ts_clean <- replace_zeros(whale_fin_ts)
+whale_hump_ts_clean <- replace_zeros(whale_hump_ts)
+whale_combined_ts_clean <- replace_zeros(whale_combined_ts)
+
+# Decompose the time series using multiplicative model
+whale_blue_decomp <- decompose(whale_blue_ts_clean, type = "multiplicative")
+whale_fin_decomp <- decompose(whale_fin_ts_clean, type = "multiplicative")
+whale_hump_decomp <- decompose(whale_hump_ts_clean, type = "multiplicative")
 
 # For map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
@@ -490,22 +503,24 @@ ui <- navbarPage(
       )
     ),
 
-    
     tabPanel(
       tagList(tags$img(src = "clock.png", height = "20px", width = "20px", style = "margin-right: 10px;"),"Whale Migration Forecast"), 
              sidebarLayout(
                sidebarPanel(
                  radioButtons(inputId = "forecast_species", 
                               label = "Select Whale Species", 
-                              choices = c("Blue Whale", "Fin Whale", "Humpback Whale", "All Species"), 
-                              selected = "All Species"),
+                              choices = c("Blue Whale", "Fin Whale", "Humpback Whale"), 
+                              selected = "Blue Whale"),
                  checkboxInput(inputId = "show_decomposition", 
                                label = "Show Decomposition", 
                                value = TRUE)  
                ),
                mainPanel(
-                 plotOutput("whale_forecast_plot"),
-                 plotOutput("whale_decomp_plot")
+                 plotOutput("whale_forecast_plot", height = "500px"),
+                 # Conditional rendering for decomposition plot
+                 conditionalPanel(
+                   condition = "input.show_decomposition == true", 
+                   plotOutput("whale_decomp_plot", height = "500px"))
                )
              )
     ),
@@ -756,7 +771,6 @@ server <- function(input, output, session) {
     }
   }  
 })
-
   # For species selection, filter the data
   filtered_whale_data <- reactive({
     if (input$forecast_species == "Blue Whale") {
@@ -765,9 +779,7 @@ server <- function(input, output, session) {
       return(whale_fin_agg)
     } else if (input$forecast_species == "Humpback Whale") {
       return(whale_hump_agg)
-    } else {
-      return(whale_combined_agg)  # For "All Species"
-    }
+    } 
   })
   
   # The time series and perform decomposition for the selected species
@@ -776,34 +788,179 @@ server <- function(input, output, session) {
     
     # Convert to time series object
     whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
-    whale_decomp <- decompose(whale_ts)
     
     if (input$show_decomposition) {
-      autoplot(whale_decomp) + 
-        ggtitle(paste("Decomposition of", input$forecast_species, "Sightings")) +
-        theme_minimal()
+      # Create decomposition using STL (more robust than decompose)
+      whale_decomp <- stl(whale_ts, s.window = "periodic")
+      
+      # Set larger font size for title and labels
+      par(mar = c(5, 5, 5, 5))  # Adjust margins if necessary
+      par(cex.main = 2)  # Increase title size
+      par(cex.lab = 2)  # Increase axis labels size
+      par(cex.axis = 1.5)  # Axis label size
+      
+      # Plot decomposition
+      plot(whale_decomp, main = paste(input$forecast_species, "Sightings - Time Series Decomposition"),
+           col.main = "darkblue", col.lab = "darkblue",
+           font.main = 1)
+    
     } else {
       NULL  # Don't show the decomposition plot if unchecked
     }
   })
   
-  # Forecasting (Seasonal Naive Method) for the selected species
+  # Forecasting with enhanced visualization for the selected species
   output$whale_forecast_plot <- renderPlot({
     whale_data <- filtered_whale_data()
     
     # Convert to time series object
     whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
-    whale_forecast <- snaive(whale_ts, h = 36)  # Forecast 3 years ahead
     
-    autoplot(whale_forecast) + 
-      ggtitle(paste("Seasonal Naive Forecast for", input$forecast_species, "Sightings")) +
-      theme_minimal() +
-      xlab("Year") + 
-      ylab("Total Sightings")
-    
+    # Check species and create the forecast accordingly
+    if (input$forecast_species == "Blue Whale" | input$forecast_species == "Fin Whale") {
+      # Create forecast with 70% and 85% confidence intervals using Seasonal Naive method
+      forecast_obj <- snaive(whale_ts, h = 36, level = c(70, 85))
+      
+      # Extract forecast data for custom plotting
+      fc_data <- as.data.frame(forecast_obj)
+      
+      # Get time information for proper x-axis
+      fc_data$time <- as.numeric(time(forecast_obj$mean))
+      
+      # Plot with ggplot2 for more control
+      ggplot() +
+        # Plot historical data
+        geom_line(data = as.data.frame(whale_ts), 
+                  aes(x = as.numeric(time(whale_ts)), y = x, color = "Historical"), 
+                  size = 0.5) +
+        # Add 85% confidence interval - force minimum to 0
+        geom_ribbon(data = fc_data, 
+                    aes(x = time, 
+                        ymin = pmax(0, `Lo 85`), 
+                        ymax = `Hi 85`, 
+                        fill = "85% CI"),
+                    alpha = 0.3) +
+        # Add 70% confidence interval - force minimum to 0
+        geom_ribbon(data = fc_data, 
+                    aes(x = time, 
+                        ymin = pmax(0, `Lo 70`), 
+                        ymax = `Hi 70`, 
+                        fill = "70% CI"),
+                    alpha = 0.5) +
+        # Add forecast line
+        geom_line(data = fc_data, 
+                  aes(x = time, y = `Point Forecast`, color = "Forecast"), 
+                  size = 0.5) +
+        # Customize labels
+        ggtitle(paste("Forecast for", input$forecast_species, "Sightings")) +
+        xlab("Year") + 
+        ylab("Total Sightings") +
+        # Define color and fill scales with explicit legends
+        scale_color_manual(name = "Series",
+                           values = c("Historical" = "black", "Forecast" = "#593527FF")) +
+        scale_fill_manual(name = "Confidence Interval",
+                          values = c("85% CI" = "#89B7CFFF", "70% CI" = "#5C92B4FF")) +
+        # Force y-axis to start at 0
+        scale_y_continuous(limits = c(0, NA)) +
+        # Improve theme
+        theme_minimal() +
+        theme(
+          legend.position = "bottom",
+          legend.box = "vertical",
+          legend.title = element_text(face = "bold", size = 12),
+          plot.title = element_text(face = "bold", hjust = 0.5, size = 18),    
+          axis.title.x = element_text(size = 14),     
+          axis.title.y = element_text(size = 14) 
+        ) +
+        # Ensure both legend items appear
+        guides(
+          color = guide_legend(order = 1),
+          fill = guide_legend(order = 2)
+        )
+    }
+    else if (input$forecast_species == "Humpback Whale") {
+      # Function to forecast future ARIMA for sightings
+      forecast_future_arima <- function(ts_data, species_name, h = 36) {
+        # Auto-select ARIMA model
+        fit <- auto.arima(ts_data, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+        
+        # Create forecast with 70% and 85% confidence intervals
+        forecast_obj <- forecast(fit, h = h, level = c(70, 85))
+        
+        # Print ARIMA model details
+        print(paste("ARIMA Model for", species_name, "Future Forecast"))
+        print(summary(fit))
+        
+        # Extract forecast data for custom plotting
+        fc_data <- as.data.frame(forecast_obj)
+        
+        # Get time information for proper x-axis
+        time_info <- time(forecast_obj$mean)
+        fc_data$time <- as.numeric(time(forecast_obj$mean))
+        
+        # Plot with ggplot2 for more control
+        p <- ggplot() +
+          # Plot historical data
+          geom_line(data = as.data.frame(ts_data), 
+                    aes(x = as.numeric(time(ts_data)), y = x, color = "Historical"), 
+                    size = 0.5) +
+          # Add 85% confidence interval - force minimum to 0
+          geom_ribbon(data = fc_data, 
+                      aes(x = time, 
+                          ymin = pmax(0, `Lo 85`), 
+                          ymax = `Hi 85`, 
+                          fill = "85% CI"),
+                      alpha = 0.3) +
+          # Add 70% confidence interval - force minimum to 0
+          geom_ribbon(data = fc_data, 
+                      aes(x = time, 
+                          ymin = pmax(0, `Lo 70`), 
+                          ymax = `Hi 70`, 
+                          fill = "70% CI"),
+                      alpha = 0.5) +
+          # Add forecast line
+          geom_line(data = fc_data, 
+                    aes(x = time, y = `Point Forecast`, color = "Forecast"), 
+                    size = 0.5) +
+          # Customize labels
+          ggtitle(paste("Forecast for", species_name, "Sightings")) +
+          xlab("Year") + 
+          ylab("Total Sightings") +
+          # Define color and fill scales with explicit legends
+          scale_color_manual(name = "Series",
+                             values = c("Historical" = "black", "Forecast" = "#593527FF")) +
+          scale_fill_manual(name = "Confidence Interval",
+                            values = c("85% CI" = "#89B7CFFF", "70% CI" = "#5C92B4FF")) +
+          # Force y-axis to start at 0
+          scale_y_continuous(limits = c(0, NA)) +
+          # Improve theme
+          theme_minimal() +
+          theme(
+            legend.position = "bottom",
+            legend.box = "vertical",
+            legend.title = element_text(face = "bold", size = 12),
+            plot.title = element_text(face = "bold", hjust = 0.5, size = 18),    
+            axis.title.x = element_text(size = 14),     
+            axis.title.y = element_text(size = 14) 
+          ) +
+          # Ensure both legend items appear
+          guides(
+            color = guide_legend(order = 1),
+            fill = guide_legend(order = 2)
+          )
+        
+        # Return the plot
+        return(list(plot = p, forecast_obj = forecast_obj))
+      }
+      
+      # Generate ARIMA forecast plot
+      forecast_results <- forecast_future_arima(whale_ts, species_name = "Humpback Whale", h = 36)
+      
+      # Return the ARIMA forecast plot
+      forecast_results$plot
+    }
   })
-  }
-
+}
   
 
 # Run the application 

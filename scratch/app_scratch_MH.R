@@ -119,6 +119,7 @@ whale_combined_agg <- whale_combined %>%
   group_by(date_column) %>%
   summarise(total_sightings = sum(total_sightings, na.rm = TRUE), .groups = "drop")
 
+
 # Convert to time series objects
 whale_blue_ts <- ts(whale_blue_agg$total_sightings, 
                     start = c(2014, 1), 
@@ -140,10 +141,22 @@ whale_combined_ts <- ts(whale_combined_agg$total_sightings,
                         end = c(2024, 12), 
                         frequency = 12)
 
-# Decompose the time series
-whale_blue_decomp <- decompose(whale_blue_ts)
-whale_fin_decomp <- decompose(whale_fin_ts)
-whale_hump_decomp <- decompose(whale_hump_ts)
+# Function to handle zero values
+replace_zeros <- function(ts_data) {
+  ts_data[ts_data == 0] <- 0.1
+  return(ts_data)
+}
+
+# Apply zero handling to original time series
+whale_blue_ts_clean <- replace_zeros(whale_blue_ts)
+whale_fin_ts_clean <- replace_zeros(whale_fin_ts)
+whale_hump_ts_clean <- replace_zeros(whale_hump_ts)
+whale_combined_ts_clean <- replace_zeros(whale_combined_ts)
+
+# Decompose the time series using multiplicative model
+whale_blue_decomp <- decompose(whale_blue_ts_clean, type = "multiplicative")
+whale_fin_decomp <- decompose(whale_fin_ts_clean, type = "multiplicative")
+whale_hump_decomp <- decompose(whale_hump_ts_clean, type = "multiplicative")
 
 # For map, calling zones file
 zones_sf <- st_read("data/zones_shapefile.shp")
@@ -434,7 +447,7 @@ ui <- navbarPage(
                       label = "Choose Time Series View",
                       choices = c("Annual", "Monthly")),
           h3("Summary Statistics"),  
-          tableOutput(outputId = "whale_sum_table"), 
+          tableOutput(outputId = "whale_sum_table") 
         ), 
         mainPanel(
           plotOutput(outputId = "whale_plot", height = "500px"), 
@@ -497,8 +510,8 @@ ui <- navbarPage(
         sidebarPanel(
           radioButtons(inputId = "forecast_species", 
                        label = "Select Whale Species", 
-                       choices = c("Blue Whale", "Fin Whale", "Humpback Whale", "All Species"), 
-                       selected = "All Species"),
+                       choices = c("Blue Whale", "Fin Whale", "Humpback Whale"), 
+                       selected = "Blue Whale"),
           checkboxInput(inputId = "show_decomposition", 
                         label = "Show Decomposition", 
                         value = TRUE)  
@@ -757,7 +770,7 @@ server <- function(input, output, session) {
     }  
   })
   
-  # For species selection, filter the data
+  # Filter data based on selected species
   filtered_whale_data <- reactive({
     if (input$forecast_species == "Blue Whale") {
       return(whale_blue_agg)
@@ -768,39 +781,56 @@ server <- function(input, output, session) {
     }
   })
   
-  # The time series and perform decomposition for the selected species
-  output$whale_decomp_plot <- renderPlot({
-    whale_data <- filtered_whale_data()
-    
-    # Convert to time series object
-    whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
-    whale_decomp <- decompose(whale_ts)
-    
-    if (input$show_decomposition) {
-      autoplot(whale_decomp) + 
-        ggtitle(paste("Decomposition of", input$forecast_species, "Sightings")) +
-        theme_minimal()
-    } else {
-      NULL  # Don't show the decomposition plot if unchecked
-    }
-  })
-  
-  # Forecasting (Seasonal Naive Method) for the selected species
+  # Create time series object and perform seasonal naive forecast
   output$whale_forecast_plot <- renderPlot({
     whale_data <- filtered_whale_data()
     
     # Convert to time series object
-    whale_ts <- ts(whale_data$total_sightings, start = c(2014, 1), end = c(2024, 12), frequency = 12)
-    whale_forecast <- snaive(whale_ts, h = 36)  # Forecast 3 years ahead
+    whale_ts <- ts(whale_data$total_sightings, 
+                   start = c(2014, 1), 
+                   end = c(2024, 12), 
+                   frequency = 12)
     
-    autoplot(whale_forecast) + 
+    # Handle zero values
+    whale_ts[whale_ts == 0] <- 0.1
+    
+    # Generate forecast for 3 years (36 months) ahead
+    whale_forecast <- snaive(whale_ts, h = 36)
+    
+    # Plot the forecast
+    autoplot(whale_forecast) +
       ggtitle(paste("Seasonal Naive Forecast for", input$forecast_species, "Sightings")) +
       theme_minimal() +
-      xlab("Year") + 
+      xlab("Year") +
       ylab("Total Sightings")
-    
   })
-}
+  
+  # Generate and display the decomposition plot
+  output$whale_decomp_plot <- renderPlot({
+    whale_data <- filtered_whale_data()
+    
+    # Convert to time series object
+    whale_ts <- ts(whale_data$total_sightings, 
+                   start = c(2014, 1), 
+                   end = c(2024, 12), 
+                   frequency = 12)
+    
+    # Handle zero values
+    whale_ts[whale_ts == 0] <- 0.1
+    
+    # Only show if decomposition is checked
+    if (input$show_decomposition) {
+      # Decompose the time series
+      whale_decomp <- decompose(whale_ts, type = "multiplicative")
+      
+      # Plot the decomposition
+      autoplot(whale_decomp) +
+        ggtitle(paste("Decomposition of", input$forecast_species, "Sightings")) +
+        theme_minimal()
+    } else {
+      NULL # Don't show the decomposition plot if unchecked
+    }
+  })
 
 # Run the application 
 shinyApp(ui = ui, server = server)
